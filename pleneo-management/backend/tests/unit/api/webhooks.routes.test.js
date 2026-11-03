@@ -10,7 +10,11 @@ vi.mock('#infra/database/pool.js', () => ({
   pool: {},
 }));
 vi.mock('#modules/notifications/notifications.service.js');
-vi.mock('#infra/realtime/socket-server.js', () => ({ emitToUser: vi.fn() }));
+vi.mock('#infra/realtime/socket-server.js', () => ({
+  emitToUser: vi.fn(),
+  emitToOwnerAndAdmins: vi.fn(),
+  emitToAdmins: vi.fn(),
+}));
 
 const { api, expectProblem } = await import('../../helpers/app.js');
 const { signPayload } = await import('#common/security/signature.js');
@@ -65,22 +69,37 @@ describe('POST /webhooks/events', () => {
 
   it('pushes the event to the owner over Socket.IO', async () => {
     await send(JSON.stringify(envelope));
-    expect(realtime.emitToUser).toHaveBeenCalledWith(
+    expect(realtime.emitToOwnerAndAdmins).toHaveBeenCalledWith(
       USER_ID,
       'event:received',
       expect.objectContaining({ type: 'project.created', eventId: EVENT_ID, projectId: PROJECT_ID }),
     );
   });
 
+  it('reaches operators as well as the owner, so an admin view is not blind', async () => {
+    await send(JSON.stringify(envelope));
+    const [userId] = realtime.emitToOwnerAndAdmins.mock.calls[0];
+    expect(userId).toBe(USER_ID);
+    expect(realtime.emitToUser).not.toHaveBeenCalled();
+  });
+
+  it('turns a queue signal into an operator-only push', async () => {
+    const signal = { ...envelope, id: '55555555-5555-4555-8555-555555555555', type: 'queue.changed', payload: {} };
+    const res = await send(JSON.stringify(signal));
+    expect(res.status).toBe(200);
+    expect(realtime.emitToAdmins).toHaveBeenCalledWith('queue:changed', expect.any(Object));
+    expect(realtime.emitToOwnerAndAdmins).not.toHaveBeenCalled();
+  });
+
   it('does not push a redelivered event', async () => {
     tx.query.mockResolvedValue({ rowCount: 0 });
     await send(JSON.stringify(envelope));
-    expect(realtime.emitToUser).not.toHaveBeenCalled();
+    expect(realtime.emitToOwnerAndAdmins).not.toHaveBeenCalled();
   });
 
   it('does not push when the signature is rejected', async () => {
     await send(JSON.stringify(envelope), { secret: 'x'.repeat(32) });
-    expect(realtime.emitToUser).not.toHaveBeenCalled();
+    expect(realtime.emitToOwnerAndAdmins).not.toHaveBeenCalled();
   });
 
   it('is idempotent on redelivery', async () => {

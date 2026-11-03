@@ -2,6 +2,7 @@ import { query } from '#infra/database/pool.js';
 import { DomainErrors } from '#common/errors/domain-errors.js';
 import { hasHandler } from './handlers/index.js';
 import * as jobs from './job.repository.js';
+import { markQueueDirty } from './queue-signal.js';
 
 export async function enqueue(
   {
@@ -36,7 +37,10 @@ export async function enqueue(
     },
     client,
   );
-  if (job) return { job, duplicate: false };
+  if (job) {
+    markQueueDirty();
+    return { job, duplicate: false };
+  }
   return { job: await jobs.findByIdempotencyKey(idempotencyKey, client), duplicate: true };
 }
 
@@ -45,6 +49,7 @@ export async function retryJob(id) {
   if (!current) throw DomainErrors.notFound('Job');
   const job = await jobs.retry(id);
   if (!job) throw DomainErrors.invalidTransition(current.status, 'pending');
+  markQueueDirty();
   return job;
 }
 
@@ -53,6 +58,7 @@ export async function cancelJob(id) {
   if (!current) throw DomainErrors.notFound('Job');
   const job = await jobs.cancel(id);
   if (!job) throw DomainErrors.invalidTransition(current.status, 'cancelled');
+  markQueueDirty();
   return job;
 }
 

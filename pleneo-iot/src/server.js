@@ -4,6 +4,7 @@ import { closePool, healthCheck } from '#infra/database/pool.js';
 import { startScheduler, stopScheduler } from '#infra/jobs/scheduler.js';
 import { logger } from '#infra/logging/logger.js';
 import { startMqtt, stopMqtt } from '#infra/mqtt/broker.js';
+import { stopAll as stopSimulations } from '#modules/simulation/simulator.js';
 import { createApp } from './app.js';
 
 async function main() {
@@ -25,6 +26,7 @@ async function main() {
     logger.info({ signal }, 'shutting down');
     const forceExit = setTimeout(() => process.exit(1), 15_000).unref();
     stopScheduler();
+    stopSimulations();
     stopMqtt();
     server.close(async () => {
       await closePool().catch(() => {});

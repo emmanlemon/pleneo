@@ -47,6 +47,11 @@ const schema = z.object({
   MQTT_TLS_KEY_PATH: optionalString(z.string().min(1)),
   MQTT_TLS_CERT_PATH: optionalString(z.string().min(1)),
 
+  SIMULATION_ENABLED: bool('false'),
+  SIMULATION_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(3000),
+  SIMULATION_MAX_CONCURRENT: z.coerce.number().int().min(1).max(500).default(25),
+  SIMULATION_MAX_DURATION_MS: z.coerce.number().int().min(60_000).default(3_600_000),
+
   DEVICE_OFFLINE_AFTER_SECONDS: z.coerce.number().int().min(10).default(120),
   OFFLINE_SWEEP_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
   COMMAND_DEFAULT_TTL_SECONDS: z.coerce.number().int().min(10).max(86_400).default(300),
@@ -92,6 +97,9 @@ if (config.OUTBOX_ENABLED && !(config.EVENTS_URL && config.EVENTS_CLIENT_ID && c
   fail('EVENTS_URL, EVENTS_CLIENT_ID and EVENTS_CLIENT_SECRET are required while OUTBOX_ENABLED=true');
 }
 if (config.isProd && !config.RATE_LIMIT_ENABLED) fail('RATE_LIMIT_ENABLED must be true in production');
+if (config.isProd && config.SIMULATION_ENABLED) {
+  process.stderr.write('WARNING: SIMULATION_ENABLED is on in production; synthetic telemetry will be written\n');
+}
 if (Boolean(config.MQTT_TLS_KEY_PATH) !== Boolean(config.MQTT_TLS_CERT_PATH)) {
   fail('MQTT_TLS_KEY_PATH and MQTT_TLS_CERT_PATH must be set together');
 }

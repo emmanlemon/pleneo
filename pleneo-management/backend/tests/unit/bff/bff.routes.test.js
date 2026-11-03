@@ -60,7 +60,7 @@ beforeEach(() => {
 describe('POST /bff/auth/login', () => {
   it('opens a session and returns cookies instead of tokens', async () => {
     upstream.login.mockResolvedValue(TOKENS);
-    const res = await api().post('/v1/bff/auth/login').send({ email: PROFILE.email, password: 'whatever' });
+    const res = await api().post('/v1/auth/login').send({ email: PROFILE.email, password: 'whatever' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ mfaRequired: false, user: { id: USER_ID } });
@@ -77,7 +77,7 @@ describe('POST /bff/auth/login', () => {
 
   it('stores the provider tokens encrypted, never in the clear', async () => {
     upstream.login.mockResolvedValue(TOKENS);
-    await api().post('/v1/bff/auth/login').send({ email: PROFILE.email, password: 'whatever' });
+    await api().post('/v1/auth/login').send({ email: PROFILE.email, password: 'whatever' });
 
     const [stored] = sessions.create.mock.calls[0];
     expect(stored.accessTokenEnc).not.toContain(ACCESS);
@@ -88,7 +88,7 @@ describe('POST /bff/auth/login', () => {
 
   it('returns the MFA challenge without opening a session', async () => {
     upstream.login.mockResolvedValue({ mfaRequired: true, mfaToken: 'm'.repeat(30), expiresIn: 300 });
-    const res = await api().post('/v1/bff/auth/login').send({ email: PROFILE.email, password: 'whatever' });
+    const res = await api().post('/v1/auth/login').send({ email: PROFILE.email, password: 'whatever' });
 
     expect(res.body.mfaRequired).toBe(true);
     expect(res.headers['set-cookie']).toBeUndefined();
@@ -97,26 +97,26 @@ describe('POST /bff/auth/login', () => {
 
   it('passes provider failures through without leaking its address', async () => {
     upstream.login.mockRejectedValue(new UpstreamAuthError(401, 'INVALID_CREDENTIALS', 'Invalid credentials'));
-    const res = await api().post('/v1/bff/auth/login').send({ email: PROFILE.email, password: 'bad' });
+    const res = await api().post('/v1/auth/login').send({ email: PROFILE.email, password: 'bad' });
 
     expectProblem(res, 401, 'INVALID_CREDENTIALS');
     expect(JSON.stringify(res.body)).not.toContain('4000');
   });
 
   it('validates the body before calling the provider', async () => {
-    expectProblem(await api().post('/v1/bff/auth/login').send({ email: 'nope' }), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().post('/v1/auth/login').send({ email: 'nope' }), 400, 'VALIDATION_FAILED');
     expect(upstream.login).not.toHaveBeenCalled();
   });
 });
 
 describe('session-backed requests', () => {
   it('rejects a request with no session', async () => {
-    expectProblem(await api().get('/v1/bff/auth/session'), 401, 'AUTHENTICATION_REQUIRED');
+    expectProblem(await api().get('/v1/auth/session'), 401, 'AUTHENTICATION_REQUIRED');
   });
 
   it('resolves the caller from the session cookie', async () => {
     sessions.findByTokenHash.mockResolvedValue(liveSession());
-    const res = await api().get('/v1/bff/auth/session').set('Cookie', 'pleneo_session=abc');
+    const res = await api().get('/v1/auth/session').set('Cookie', 'pleneo_session=abc');
 
     expect(res.status).toBe(200);
     expect(res.body.user.id).toBe(USER_ID);
@@ -125,23 +125,23 @@ describe('session-backed requests', () => {
 
   it('rejects a revoked or expired session', async () => {
     sessions.findByTokenHash.mockResolvedValueOnce(liveSession({ revoked_at: new Date().toISOString() }));
-    expectProblem(await api().get('/v1/bff/auth/session').set('Cookie', 'pleneo_session=abc'), 401, 'SESSION_REQUIRED');
+    expectProblem(await api().get('/v1/auth/session').set('Cookie', 'pleneo_session=abc'), 401, 'SESSION_REQUIRED');
 
     sessions.findByTokenHash.mockResolvedValueOnce(liveSession({ expires_at: new Date(Date.now() - 1000).toISOString() }));
-    expectProblem(await api().get('/v1/bff/auth/session').set('Cookie', 'pleneo_session=abc'), 401, 'SESSION_REQUIRED');
+    expectProblem(await api().get('/v1/auth/session').set('Cookie', 'pleneo_session=abc'), 401, 'SESSION_REQUIRED');
   });
 
   it('requires the CSRF header on mutating requests', async () => {
     sessions.findByTokenHash.mockResolvedValue(liveSession());
 
     const missing = await api()
-      .post('/v1/bff/auth/password/change')
+      .post('/v1/auth/password/change')
       .set('Cookie', 'pleneo_session=abc')
       .send({ currentPassword: 'old', newPassword: 'Correct-Horse-9' });
     expectProblem(missing, 403, 'CSRF_FAILED');
 
     const wrong = await api()
-      .post('/v1/bff/auth/password/change')
+      .post('/v1/auth/password/change')
       .set('Cookie', 'pleneo_session=abc')
       .set('X-CSRF-Token', 'not-the-value')
       .send({ currentPassword: 'old', newPassword: 'Correct-Horse-9' });
@@ -149,7 +149,7 @@ describe('session-backed requests', () => {
 
     upstream.changePassword.mockResolvedValue({ message: 'Password updated' });
     const accepted = await api()
-      .post('/v1/bff/auth/password/change')
+      .post('/v1/auth/password/change')
       .set('Cookie', 'pleneo_session=abc')
       .set('X-CSRF-Token', 'csrf-value')
       .send({ currentPassword: 'old', newPassword: 'Correct-Horse-9' });
@@ -167,7 +167,7 @@ describe('session-backed requests', () => {
 describe('POST /bff/auth/logout', () => {
   it('revokes the session, tells the provider, and clears both cookies', async () => {
     sessions.findByTokenHash.mockResolvedValue(liveSession());
-    const res = await api().post('/v1/bff/auth/logout').set('Cookie', 'pleneo_session=abc');
+    const res = await api().post('/v1/auth/logout').set('Cookie', 'pleneo_session=abc');
 
     expect(res.status).toBe(204);
     expect(sessions.revoke).toHaveBeenCalledWith('session-row-id', 'logout');
@@ -177,7 +177,7 @@ describe('POST /bff/auth/logout', () => {
   });
 
   it('is safe without a session', async () => {
-    expect((await api().post('/v1/bff/auth/logout')).status).toBe(204);
+    expect((await api().post('/v1/auth/logout')).status).toBe(204);
   });
 });
 
@@ -185,7 +185,7 @@ describe('anonymous account routes', () => {
   it('accepts a registration and answers with the provider message only', async () => {
     upstream.register.mockResolvedValue({ message: 'Check your inbox to verify the address' });
     const res = await api()
-      .post('/v1/bff/auth/register')
+      .post('/v1/auth/register')
       .send({ email: 'new@example.com', password: 'Correct-Horse-9', name: 'New' });
 
     expect(res.status).toBe(202);
@@ -197,11 +197,11 @@ describe('anonymous account routes', () => {
     upstream.resendVerification.mockResolvedValue(undefined);
     upstream.forgotPassword.mockResolvedValue(undefined);
 
-    const resend = await api().post('/v1/bff/auth/email/resend').send({ email: 'ghost@example.com' });
+    const resend = await api().post('/v1/auth/email/resend').send({ email: 'ghost@example.com' });
     expect(resend.status).toBe(202);
     expect(resend.body.message).toMatch(/if the account exists/i);
 
-    const forgot = await api().post('/v1/bff/auth/password/forgot').send({ email: 'ghost@example.com' });
+    const forgot = await api().post('/v1/auth/password/forgot').send({ email: 'ghost@example.com' });
     expect(forgot.status).toBe(202);
     expect(forgot.body.message).toMatch(/if the account exists/i);
   });
@@ -210,11 +210,11 @@ describe('anonymous account routes', () => {
     upstream.verifyEmail.mockResolvedValue({ message: 'Email verified' });
     upstream.resetPassword.mockResolvedValue({ message: 'Password updated' });
 
-    const verify = await api().post('/v1/bff/auth/email/verify').send({ token: 't'.repeat(40) });
+    const verify = await api().post('/v1/auth/email/verify').send({ token: 't'.repeat(40) });
     expect(verify.status).toBe(200);
 
     const reset = await api()
-      .post('/v1/bff/auth/password/reset')
+      .post('/v1/auth/password/reset')
       .send({ token: 't'.repeat(40), password: 'Correct-Horse-9' });
     expect(reset.status).toBe(200);
   });

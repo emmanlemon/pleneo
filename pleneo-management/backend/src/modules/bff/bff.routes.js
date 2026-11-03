@@ -6,6 +6,7 @@ import { requireUser } from '#common/middleware/authorize.js';
 import { authLimiter, gatewayLimiter, sensitiveLimiter } from '#common/middleware/rate-limit.js';
 import { body } from '#common/validation/validator.js';
 import { createGateway } from '#modules/gateway/gateway.js';
+import { UPSTREAMS } from '#modules/gateway/policy.js';
 import * as c from './bff.controller.js';
 
 const email = z.string().trim().toLowerCase().email().max(254);
@@ -22,19 +23,22 @@ export const verifyEmailSchema = z.object({ token: opaqueToken }).strict();
 export const resetPasswordSchema = z.object({ token: opaqueToken, password }).strict();
 export const changePasswordSchema = z.object({ currentPassword: z.string().min(1).max(128), newPassword: password }).strict();
 
-export const bffRouter = Router();
+export const authRouter = Router();
 
-bffRouter.post('/auth/login', authLimiter, body(loginSchema), h(c.login));
-bffRouter.post('/auth/login/mfa', authLimiter, body(mfaSchema), h(c.loginMfa));
-bffRouter.post('/auth/register', authLimiter, body(registerSchema), h(c.register));
-bffRouter.post('/auth/email/verify', authLimiter, body(verifyEmailSchema), h(c.verifyEmail));
-bffRouter.post('/auth/email/resend', sensitiveLimiter, body(emailOnlySchema), h(c.resendVerification));
-bffRouter.post('/auth/password/forgot', sensitiveLimiter, body(emailOnlySchema), h(c.forgotPassword));
-bffRouter.post('/auth/password/reset', authLimiter, body(resetPasswordSchema), h(c.resetPassword));
-bffRouter.post('/auth/logout', h(c.logout));
+authRouter.post('/login', authLimiter, body(loginSchema), h(c.login));
+authRouter.post('/login/mfa', authLimiter, body(mfaSchema), h(c.loginMfa));
+authRouter.post('/register', authLimiter, body(registerSchema), h(c.register));
+authRouter.post('/email/verify', authLimiter, body(verifyEmailSchema), h(c.verifyEmail));
+authRouter.post('/email/resend', sensitiveLimiter, body(emailOnlySchema), h(c.resendVerification));
+authRouter.post('/password/forgot', sensitiveLimiter, body(emailOnlySchema), h(c.forgotPassword));
+authRouter.post('/password/reset', authLimiter, body(resetPasswordSchema), h(c.resetPassword));
+authRouter.post('/logout', h(c.logout));
 
-bffRouter.get('/auth/session', authenticate, requireUser, h(c.session));
-bffRouter.post('/auth/password/change', authenticate, requireUser, authLimiter, body(changePasswordSchema), h(c.changePassword));
+authRouter.get('/session', authenticate, requireUser, h(c.session));
+authRouter.post('/password/change', authenticate, requireUser, authLimiter, body(changePasswordSchema), h(c.changePassword));
 
-bffRouter.use('/events', authenticate, requireUser, gatewayLimiter, h(createGateway('events')));
-bffRouter.use('/iot', authenticate, requireUser, gatewayLimiter, h(createGateway('iot')));
+/** Proxied surfaces mount at the resource root, so the console never learns which service serves them. */
+export const proxyRouter = Router();
+for (const [name, upstream] of Object.entries(UPSTREAMS))
+  for (const mount of upstream.mounts)
+    proxyRouter.use(mount, authenticate, requireUser, gatewayLimiter, h(createGateway(name, mount)));

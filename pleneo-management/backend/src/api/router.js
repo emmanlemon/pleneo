@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { bffRouter } from '#modules/bff/bff.routes.js';
+import { authRouter, proxyRouter } from '#modules/bff/bff.routes.js';
 import { emailRouter } from '#modules/email/email.routes.js';
 import { gatewayRouter } from '#modules/gateway/gateway.routes.js';
 import { notificationsRouter } from '#modules/notifications/notifications.routes.js';
@@ -12,9 +12,10 @@ export const router = Router();
 
 router.use(docsRouter);
 router.use(systemRouter);
-router.use('/v1/bff', bffRouter);
+router.use('/v1/auth', authRouter);
 router.use('/v1/admin', gatewayRouter);
 router.use('/v1/admin', emailRouter);
 router.use('/v1/projects', projectsRouter);
 router.use('/v1/notifications', notificationsRouter);
 router.use('/v1/webhooks', webhooksRouter);
+router.use('/v1', proxyRouter);

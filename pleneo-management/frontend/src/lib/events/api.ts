@@ -89,22 +89,22 @@ export type EventRecord = {
 export type JobListParams = { status?: JobStatus; queue?: string; type?: string; limit?: number; before?: string };
 
 export const eventsApi = {
-  stats: () => bffHttp.get<QueueStats>('/events/admin/stats').then((r) => r.data),
+  stats: () => bffHttp.get<QueueStats>('/queues/stats').then((r) => r.data),
   jobs: (params: JobListParams = {}) =>
-    bffHttp.get<{ jobs: Job[]; nextBefore: string | null }>('/events/admin/jobs', { params }).then((r) => r.data),
-  job: (id: string) => bffHttp.get<JobDetail>(`/events/admin/jobs/${id}`).then((r) => r.data),
-  retryJob: (id: string) => bffHttp.post<Job>(`/events/admin/jobs/${id}/retry`).then((r) => r.data),
-  cancelJob: (id: string) => bffHttp.post<Job>(`/events/admin/jobs/${id}/cancel`).then((r) => r.data),
+    bffHttp.get<{ jobs: Job[]; nextBefore: string | null }>('/queues/jobs', { params }).then((r) => r.data),
+  job: (id: string) => bffHttp.get<JobDetail>(`/queues/jobs/${id}`).then((r) => r.data),
+  retryJob: (id: string) => bffHttp.post<Job>(`/queues/jobs/${id}/retry`).then((r) => r.data),
+  cancelJob: (id: string) => bffHttp.post<Job>(`/queues/jobs/${id}/cancel`).then((r) => r.data),
   events: (params: { type?: string; limit?: number } = {}) =>
     bffHttp
-      .get<{ events: EventRecord[]; nextBefore: string | null }>('/events/admin/events', { params })
+      .get<{ events: EventRecord[]; nextBefore: string | null }>('/queues/events', { params })
       .then((r) => r.data),
-  schedules: () => bffHttp.get<{ schedules: Schedule[] }>('/events/admin/schedules').then((r) => r.data.schedules),
+  schedules: () => bffHttp.get<{ schedules: Schedule[] }>('/queues/schedules').then((r) => r.data.schedules),
   updateSchedule: (id: string, input: Partial<Pick<Schedule, 'enabled' | 'cron' | 'timezone' | 'description'>>) =>
-    bffHttp.patch<Schedule>(`/events/admin/schedules/${id}`, input).then((r) => r.data),
-  runSchedule: (id: string) => bffHttp.post<{ jobId: string }>(`/events/admin/schedules/${id}/run`).then((r) => r.data),
+    bffHttp.patch<Schedule>(`/queues/schedules/${id}`, input).then((r) => r.data),
+  runSchedule: (id: string) => bffHttp.post<{ jobId: string }>(`/queues/schedules/${id}/run`).then((r) => r.data),
   subscriptions: () =>
-    bffHttp.get<{ subscriptions: Subscription[] }>('/events/admin/subscriptions').then((r) => r.data.subscriptions),
+    bffHttp.get<{ subscriptions: Subscription[] }>('/queues/subscriptions').then((r) => r.data.subscriptions),
   updateSubscription: (id: string, input: { status?: 'active' | 'paused' }) =>
-    bffHttp.patch<Subscription>(`/events/admin/subscriptions/${id}`, input).then((r) => r.data),
+    bffHttp.patch<Subscription>(`/queues/subscriptions/${id}`, input).then((r) => r.data),
 };

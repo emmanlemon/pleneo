@@ -9,7 +9,8 @@ export const createQueryClient = () =>
       queries: {
         staleTime: 30_000,
         gcTime: 5 * 60_000,
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
         retry: (count, error) => count < 2 && !(error instanceof ApiError && NO_RETRY_STATUSES.has(error.status)),
       },
       mutations: { retry: false },

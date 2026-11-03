@@ -3,6 +3,7 @@ import { logger } from '#infra/logging/logger.js';
 import { nextRunAt } from './backoff.js';
 import { getHandler } from './handlers/index.js';
 import * as jobs from './job.repository.js';
+import { markQueueDirty } from './queue-signal.js';
 
 const withTimeout = (promise, ms) =>
   new Promise((resolve, reject) => {
@@ -40,6 +41,7 @@ export function createWorker({
       });
       jobLog[status === 'dead' ? 'error' : 'warn']({ err: err?.message, status }, 'job failed');
     } finally {
+      markQueueDirty();
       inFlight--;
     }
   }

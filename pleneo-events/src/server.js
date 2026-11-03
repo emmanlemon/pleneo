@@ -5,6 +5,7 @@ import { closeEmailProvider } from '#infra/email/provider.js';
 import { logger } from '#infra/logging/logger.js';
 import { createWorker } from '#queue/worker.js';
 import { startScheduler, stopScheduler } from '#scheduler/scheduler.js';
+import { startQueueSignals, stopQueueSignals } from '#queue/queue-signal.js';
 import { createApp } from './app.js';
 
 async function main() {
@@ -20,6 +21,7 @@ async function main() {
   const worker = config.WORKER_ENABLED ? createWorker() : null;
   worker?.start();
   if (config.SCHEDULER_ENABLED) startScheduler();
+  startQueueSignals();
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
@@ -28,6 +30,7 @@ async function main() {
     logger.info({ signal }, 'shutting down');
     const forceExit = setTimeout(() => process.exit(1), 30_000).unref();
     stopScheduler();
+    stopQueueSignals();
     server.close();
     await worker?.stop();
     await closeEmailProvider();

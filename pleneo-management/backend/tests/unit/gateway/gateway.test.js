@@ -62,7 +62,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('identity hand-off', () => {
   it('sends a short-lived internal assertion instead of the provider token', async () => {
-    await signedIn(api().get('/v1/bff/iot/devices')).expect(200);
+    await signedIn(api().get('/v1/devices')).expect(200);
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init.headers.authorization).toBeUndefined();
@@ -78,7 +78,7 @@ describe('identity hand-off', () => {
   });
 
   it('binds the assertion to the upstream it was minted for', async () => {
-    await signedIn(api().get('/v1/bff/events/admin/stats')).expect(200);
+    await signedIn(api().get('/v1/queues/stats')).expect(200);
     const assertion = fetchMock.mock.calls[0][1].headers['x-pleneo-identity'];
 
     await expect(jwtVerify(assertion, IDENTITY_KEY, { audience: 'pleneo-events' })).resolves.toBeTruthy();
@@ -86,7 +86,7 @@ describe('identity hand-off', () => {
   });
 
   it('never forwards a client-supplied identity header or authorization', async () => {
-    await signedIn(api().get('/v1/bff/iot/devices'))
+    await signedIn(api().get('/v1/devices'))
       .set('X-Pleneo-Identity', 'forged-assertion')
       .set('Authorization', 'Bearer attacker-token')
       .expect(200);
@@ -100,19 +100,19 @@ describe('identity hand-off', () => {
 
 describe('route allowlist at the edge', () => {
   it('refuses an unlisted upstream path without calling the upstream', async () => {
-    expectProblem(await signedIn(api().post('/v1/bff/iot/v1/device/telemetry')).send({}), 404, 'NOT_FOUND');
-    expectProblem(await signedIn(api().post('/v1/bff/events/ingest/authzero')).send({}), 404, 'NOT_FOUND');
+    expectProblem(await signedIn(api().post('/v1/devices/v1/device/telemetry')).send({}), 404, 'NOT_FOUND');
+    expectProblem(await signedIn(api().post('/v1/queues/ingest/authzero')).send({}), 404, 'NOT_FOUND');
     expect(fetchMock).not.toHaveBeenCalled();
     expect(gatewayStatus().upstreams.iot.blocked).toBe(1);
   });
 
   it('forwards the query string on an allowed route', async () => {
-    await signedIn(api().get('/v1/bff/iot/devices?status=active&limit=5')).expect(200);
+    await signedIn(api().get('/v1/devices?status=active&limit=5')).expect(200);
     expect(fetchMock.mock.calls[0][0]).toBe('http://iot.test/v1/devices?status=active&limit=5');
   });
 
   it('still enforces CSRF on a proxied mutation', async () => {
-    const res = await api().post('/v1/bff/iot/devices').set('Cookie', 'pleneo_session=abc').send({ name: 'd' });
+    const res = await api().post('/v1/devices').set('Cookie', 'pleneo_session=abc').send({ name: 'd' });
     expectProblem(res, 403, 'CSRF_FAILED');
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -124,7 +124,7 @@ describe('resilience', () => {
       .mockResolvedValueOnce(new Response('', { status: 503 }))
       .mockResolvedValueOnce(jsonResponse({ devices: [] }));
 
-    const res = await signedIn(api().get('/v1/bff/iot/devices')).expect(200);
+    const res = await signedIn(api().get('/v1/devices')).expect(200);
     expect(res.body).toEqual({ devices: [] });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(gatewayStatus().upstreams.iot.retries).toBe(1);
@@ -132,18 +132,18 @@ describe('resilience', () => {
 
   it('does not retry a write', async () => {
     fetchMock.mockResolvedValue(new Response('', { status: 503 }));
-    await signedIn(api().post('/v1/bff/iot/devices')).send({ name: 'd' });
+    await signedIn(api().post('/v1/devices')).send({ name: 'd' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('opens the circuit after repeated failures and answers with Retry-After', async () => {
     fetchMock.mockRejectedValue(new Error('ECONNREFUSED'));
     for (let i = 0; i < config.GATEWAY_BREAKER_THRESHOLD; i += 1) {
-      await signedIn(api().post('/v1/bff/iot/devices')).send({ name: 'd' });
+      await signedIn(api().post('/v1/devices')).send({ name: 'd' });
     }
     fetchMock.mockClear();
 
-    const res = await signedIn(api().post('/v1/bff/iot/devices')).send({ name: 'd' });
+    const res = await signedIn(api().post('/v1/devices')).send({ name: 'd' });
     expectProblem(res, 503, 'UPSTREAM_UNAVAILABLE');
     expect(res.headers['retry-after']).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -153,11 +153,11 @@ describe('resilience', () => {
   it('keeps a failing upstream from tripping the healthy one', async () => {
     fetchMock.mockRejectedValue(new Error('ECONNREFUSED'));
     for (let i = 0; i < config.GATEWAY_BREAKER_THRESHOLD; i += 1) {
-      await signedIn(api().post('/v1/bff/iot/devices')).send({ name: 'd' });
+      await signedIn(api().post('/v1/devices')).send({ name: 'd' });
     }
 
     fetchMock.mockResolvedValue(jsonResponse({ queues: {} }));
-    await signedIn(api().get('/v1/bff/events/admin/stats')).expect(200);
+    await signedIn(api().get('/v1/queues/stats')).expect(200);
     expect(gatewayStatus().upstreams.events.breaker.state).toBe('closed');
   });
 });
@@ -170,7 +170,7 @@ describe('response hygiene', () => {
         headers: { 'content-type': 'application/problem+json' },
       }),
     );
-    const res = await signedIn(api().get('/v1/bff/events/admin/stats'));
+    const res = await signedIn(api().get('/v1/queues/stats'));
     expectProblem(res, 403, 'INSUFFICIENT_PERMISSIONS');
     expect(JSON.stringify(res.body)).not.toContain('events.test');
   });
@@ -179,12 +179,12 @@ describe('response hygiene', () => {
     fetchMock.mockResolvedValue(
       jsonResponse({ ok: true }, { headers: { 'content-type': 'application/json', 'set-cookie': 'upstream=1' } }),
     );
-    const res = await signedIn(api().get('/v1/bff/iot/devices')).expect(200);
+    const res = await signedIn(api().get('/v1/devices')).expect(200);
     expect(res.headers['set-cookie']).toBeUndefined();
   });
 
   it('records traffic per upstream for the admin view', async () => {
-    await signedIn(api().get('/v1/bff/iot/devices')).expect(200);
+    await signedIn(api().get('/v1/devices')).expect(200);
     const status = gatewayStatus();
     expect(status.upstreams.iot).toMatchObject({ requests: 1, statuses: { '2xx': 1 } });
     expect(status.upstreams.iot.avgMs).toBeGreaterThanOrEqual(0);

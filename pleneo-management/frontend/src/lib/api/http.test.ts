@@ -34,13 +34,13 @@ afterEach(() => {
 describe('gateway client', () => {
   it('sends every request to the BFF origin with credentials', async () => {
     await bffHttp.get('/auth/session');
-    expect(calls[0].url).toBe('http://localhost:4100/v1/bff/auth/session');
+    expect(calls[0].url).toBe('http://localhost:4100/v1/auth/session');
     expect(calls[0].credentials).toBe(true);
   });
 
   it('never targets the identity provider or upstream services directly', async () => {
-    await bffHttp.get('/events/admin/stats');
-    await bffHttp.get('/iot/devices');
+    await bffHttp.get('/queues/stats');
+    await bffHttp.get('/devices');
     for (const call of calls) {
       expect(call.url.startsWith('http://localhost:4100')).toBe(true);
       expect(call.url).not.toMatch(/:4000|:4200|:4300/);

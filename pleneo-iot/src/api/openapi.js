@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { config } from '#config';
 import * as devices from '#modules/devices/devices.validators.js';
 import { readingSchema } from '#modules/telemetry/telemetry.validators.js';
+import { startSimulationSchema } from '#modules/simulation/simulation.routes.js';
 
 const toSchema = (zodSchema) => {
   const { $schema, ...rest } = z.toJSONSchema(zodSchema, { io: 'input', unrepresentable: 'any' });
@@ -335,6 +336,28 @@ export function buildOpenApiDocument() {
           description: 'Soft deletes the device and revokes every credential it holds.',
           params: [pathParam('id', 'Device id')],
           responses: { 204: { description: 'Decommissioned' }, ...errors(400, 401, 403, 404) },
+        }),
+      },
+      '/v1/devices/{id}/simulation': {
+        get: operation({
+          tag: 'Devices',
+          summary: 'Read the simulation state of a device',
+          params: [pathParam('id', 'Device id')],
+          responses: { 200: json('Simulation state', { type: 'object' }), ...errors(400, 401, 403, 404) },
+        }),
+        post: operation({
+          tag: 'Devices',
+          summary: 'Start simulating a device',
+          description: 'Generates readings inside each declared metric range and feeds them through the same ingest path a real device uses, so rules, alerts and events all behave normally. Bounded by SIMULATION_MAX_CONCURRENT and stopped automatically at SIMULATION_MAX_DURATION_MS. Refused in production.',
+          params: [pathParam('id', 'Device id')],
+          body: jsonBody(startSimulationSchema),
+          responses: { 200: json('Simulation started', { type: 'object' }), ...errors(400, 401, 403, 404, 409) },
+        }),
+        delete: operation({
+          tag: 'Devices',
+          summary: 'Stop simulating a device',
+          params: [pathParam('id', 'Device id')],
+          responses: { 200: json('Simulation stopped', { type: 'object' }), ...errors(400, 401, 403, 404) },
         }),
       },
       '/v1/devices/{id}/credentials': {

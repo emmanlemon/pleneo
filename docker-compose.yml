@@ -129,7 +129,7 @@ services:
         'scripts/seed-subscription.js',
         'pleneo-management',
         'http://backend:4100/v1/webhooks/events',
-        'project.*,iot.*',
+        'project.*,iot.*,queue.*',
         '${MANAGEMENT_WEBHOOK_SECRET}',
       ]
 
@@ -178,6 +178,7 @@ services:
       EVENTS_CLIENT_SECRET: ${IOT_CLIENT_SECRET}
       OUTBOX_ENABLED: 'true'
       DEVICE_OFFLINE_AFTER_SECONDS: ${DEVICE_OFFLINE_AFTER_SECONDS:-120}
+      SIMULATION_ENABLED: ${SIMULATION_ENABLED:-true}
       MQTT_ENABLED: ${MQTT_ENABLED:-true}
       MQTT_PORT: 1883
       DOCS_ENABLED: ${DOCS_ENABLED:-true}

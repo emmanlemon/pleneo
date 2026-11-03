@@ -12,3 +12,4 @@ process.env.INGEST_MAX_BACKFILL_DAYS = '30';
 process.env.DEVICE_OFFLINE_AFTER_SECONDS = '120';
 process.env.INTERNAL_IDENTITY_KEY = '9f3c1a7e5d2b8406c9e7a5f3d1b9074e2c6a8d0f4b2e6a8c0d2f4b6a8c0e2d46';
 process.env.INTERNAL_IDENTITY_AUDIENCE = 'pleneo-iot';
+process.env.SIMULATION_ENABLED = 'true';

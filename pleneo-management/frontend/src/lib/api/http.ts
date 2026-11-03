@@ -33,5 +33,8 @@ function createClient(baseURL: string, timeout: number) {
 /** The API version lives here only, so call sites stay free of it. */
 export const API_VERSION = 'v1';
 
-export const bffHttp = createClient(`${env.bffUrl}/${API_VERSION}/bff`, 15_000);
-export const apiHttp = createClient(`${env.bffUrl}/${API_VERSION}`, 10_000);
+/** One origin, one surface. Whether a path is served here or proxied is not the browser's business. */
+export const api = createClient(`${env.bffUrl}/${API_VERSION}`, 15_000);
+
+export const bffHttp = api;
+export const apiHttp = api;

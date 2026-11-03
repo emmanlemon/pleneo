@@ -9,21 +9,18 @@ export const notificationKeys = {
   unread: ['notifications', 'unread-count'] as const,
 };
 
-const POLL_MS = 60_000;
 
 export const useNotifications = (params: NotificationListParams = {}) =>
   useQuery({
     queryKey: notificationKeys.list(params),
-    queryFn: () => notificationsApi.list(params),
-    refetchInterval: POLL_MS,
+    queryFn: () => notificationsApi.list(params)
   });
 
 export const useUnreadCount = () =>
   useQuery({
     queryKey: notificationKeys.unread,
     queryFn: notificationsApi.unreadCount,
-    refetchInterval: POLL_MS,
-    staleTime: 10_000,
+    staleTime: 10_000
   });
 
 function useInvalidate() {

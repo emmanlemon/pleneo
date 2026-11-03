@@ -9,10 +9,10 @@ frontend/   Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui). zod + r
 
 ## Backend for frontend
 
-`/v1/bff/*` is a token handler. The browser posts credentials to the gateway, which calls authzero server side, encrypts both tokens with AES-256-GCM and keeps them in `bff_sessions`. The browser gets an httpOnly `pleneo_session` cookie and a readable `pleneo_csrf` cookie, never a token, and never the provider's address.
+`/v1/*` is a token handler. The browser posts credentials to the gateway, which calls authzero server side, encrypts both tokens with AES-256-GCM and keeps them in `bff_sessions`. The browser gets an httpOnly `pleneo_session` cookie and a readable `pleneo_csrf` cookie, never a token, and never the provider's address.
 
 - `modules/bff/session.service.js` resolves a session by the SHA-256 of the cookie, refreshes under a row lock when the access token is within `BFF_REFRESH_SKEW_SECONDS` of expiry, and revokes the session if the refresh fails.
-- `modules/gateway/*` forwards `/v1/bff/events/*` and `/v1/bff/iot/*` upstream. See the gateway section below.
+- `modules/gateway/*` proxies `/v1/queues`, `/v1/devices`, `/v1/commands`, `/v1/alerts` and `/v1/rules`. See the gateway section below.
 - Mutating requests must echo the CSRF cookie in `X-CSRF-Token`; the gateway compares it against the stored hash.
 - `BFF_SESSION_KEY` is 32 bytes of hex and is required while `BFF_ENABLED=true`, which also requires `IOT_URL`. `BFF_COOKIE_SECURE` must be true in production.
 - Expired sessions are pruned by the maintenance job. Set `BFF_ENABLED=false` to go back to bearer tokens.
@@ -49,8 +49,8 @@ Same layering as authzero: `api/` → `modules/<feature>/{routes,controller,vali
 
 - `src/lib/api/http.ts`: one origin, `NEXT_PUBLIC_BFF_URL`. Both axios instances send credentials and attach `X-CSRF-Token` to mutating requests. The browser stores no token.
 - `src/lib/api/problem.ts`: `ApiError` from problem details and `applyFieldErrors` to push server field errors into react-hook-form.
-- `src/lib/auth/*`: zod schemas mirroring authzero's rules, typed API against `/bff/auth/*`, TanStack hooks (`useSession`, `useLogin`, `useLogout`, …).
-- `src/lib/events/api.ts` and `src/lib/devices/api.ts` call `/v1/bff/events/*` and `/v1/bff/iot/*`; the console never addresses those services directly.
+- `src/lib/auth/*`: zod schemas mirroring authzero's rules, typed API against `/v1/auth/*`, TanStack hooks (`useSession`, `useLogin`, `useLogout`, …).
+- `src/lib/events/api.ts` and `src/lib/devices/api.ts` call `/v1/queues/*` and `/v1/devices/*`; the console never addresses those services directly.
 - `src/components/auth-guard.tsx` protects the `(app)` route group client-side and redirects to `/login?next=`.
 - UI is shadcn/ui (`src/components/ui`, `components.json`). Add more with `npx shadcn@latest add <component>`.
 
@@ -85,11 +85,13 @@ npm run verify    # all of the above, also run by the Husky pre-push hook
 - **Inbound webhook** `POST /webhooks/events`: verifies `x-pleneo-signature` against `EVENTS_WEBHOOK_SECRET`, deduplicates on event id and turns `project.*` events into in-app notifications (plus `email.send` jobs when `NOTIFY_EMAIL_ENABLED=true`).
 - **Notifications API** `/v1/notifications` (list, unread count, mark read, mark all, delete) backs the bell in the console header and the `/v1/notifications` page.
 - **Queue console** `/admin/queues` (admin role): overview, jobs with retry/cancel and attempt history, dead letter, schedules (run now, pause), webhook subscriptions and the event stream, all read from pleneo-events `/admin/*` through the BFF proxy.
-- **Email test** `/admin/queues`, Email tab (admin role): `POST /v1/admin/email/test` enqueues an `email.send` job on the `email` queue using the `system.test-email` template, then the card polls that job and reports the outcome with the provider's error when delivery fails. It uses the same pipeline a real notification does, so it proves the whole path rather than just the provider credentials. The tab also shows which provider pleneo-events is running.
+- **Email test** `/admin/queues`, Email tab (admin role): `POST /v1/admin/email/test` enqueues an `email.send` job on the `email` queue using the `system.test-email` template, then the card follows that job over the socket and reports the outcome with the provider's error when delivery fails. It uses the same pipeline a real notification does, so it proves the whole path rather than just the provider credentials. The tab also shows which provider pleneo-events is running.
 
 ## API reference and realtime
 
 - Reference UI: http://localhost:4100/docs
 - Document: http://localhost:4100/openapi.json
 
-Socket.IO runs on the same port. The browser authenticates its handshake with the session cookie, service clients may send a bearer token in `auth.token`, and each connection joins a private room per user. The inbound webhook pushes `notification:new` and `event:received` the moment an event is handled, so the console updates without polling. Configure with `SOCKET_ENABLED` and `SOCKET_PATH`.
+Socket.IO runs on the same port. The browser authenticates its handshake with the session cookie, service clients may send a bearer token in `auth.token`, and every connection joins a room per user; an admin also joins `role:admin` so operators see fleet-wide changes rather than only their own.
+
+Nothing in the console polls. The inbound webhook pushes `notification:new`, `event:received` and `queue:changed`, and `invalidateForEvent` narrows the refresh to the device or project named in the payload. Window focus, network reconnect and a socket reconnect each trigger a resync, which covers anything missed while disconnected. Configure with `SOCKET_ENABLED` and `SOCKET_PATH`.

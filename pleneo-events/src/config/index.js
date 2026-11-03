@@ -57,6 +57,8 @@ const schema = z.object({
   BACKOFF_MAX_MS: z.coerce.number().int().min(1000).default(3_600_000),
   SCHEDULER_ENABLED: bool('true'),
   WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).default(10_000),
+  QUEUE_SIGNAL_ENABLED: bool('true'),
+  QUEUE_SIGNAL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(2000),
 
   APP_BASE_URL: z.string().url(),
   EMAIL_PROVIDER: z.enum(['log', 'gmail', 'mailtrap']).default('log'),

@@ -87,7 +87,8 @@ export function buildOpenApiDocument() {
       { name: 'System', description: 'Liveness, readiness and the API document' },
       { name: 'Projects', description: 'Project records owned by a user' },
       { name: 'Notifications', description: 'Per-user inbox backing the console bell' },
-      { name: 'BFF', description: 'Browser gateway: the only surface the console talks to' },
+      { name: 'BFF', description: 'Session endpoints: the browser holds a cookie, never a token' },
+      { name: 'Gateway', description: 'Resources this service proxies; the caller cannot tell which are local' },
       { name: 'Admin', description: 'Operator tools behind the admin role' },
       { name: 'Webhooks', description: 'Signed inbound events from pleneo-events' },
     ],
@@ -327,7 +328,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/v1/bff/auth/login': {
+      '/v1/auth/login': {
         post: operation({
           tag: 'BFF',
           summary: 'Sign in and open a browser session',
@@ -348,7 +349,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/v1/bff/auth/login/mfa': {
+      '/v1/auth/login/mfa': {
         post: operation({
           tag: 'BFF',
           summary: 'Answer the MFA challenge and open a session',
@@ -360,7 +361,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/v1/bff/auth/session': {
+      '/v1/auth/session': {
         get: operation({
           tag: 'BFF',
           summary: 'Who the session belongs to',
@@ -369,7 +370,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Current user', { type: 'object', properties: { user: ref('Profile') } }), ...errors(401, 403) },
         }),
       },
-      '/v1/bff/auth/logout': {
+      '/v1/auth/logout': {
         post: operation({
           tag: 'BFF',
           summary: 'Close the session',
@@ -378,7 +379,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Signed out' } },
         }),
       },
-      '/v1/bff/auth/register': {
+      '/v1/auth/register': {
         post: operation({
           tag: 'BFF',
           summary: 'Register an account',
@@ -387,7 +388,7 @@ export function buildOpenApiDocument() {
           responses: { 202: json('Accepted', { type: 'object' }), ...errors(400, 429) },
         }),
       },
-      '/v1/bff/auth/email/verify': {
+      '/v1/auth/email/verify': {
         post: operation({
           tag: 'BFF',
           summary: 'Verify an email address',
@@ -396,7 +397,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Verified', { type: 'object' }), ...errors(400, 401, 429) },
         }),
       },
-      '/v1/bff/auth/email/resend': {
+      '/v1/auth/email/resend': {
         post: operation({
           tag: 'BFF',
           summary: 'Resend the verification email',
@@ -405,7 +406,7 @@ export function buildOpenApiDocument() {
           responses: { 202: json('Accepted', { type: 'object' }), ...errors(400, 429) },
         }),
       },
-      '/v1/bff/auth/password/forgot': {
+      '/v1/auth/password/forgot': {
         post: operation({
           tag: 'BFF',
           summary: 'Request a password reset',
@@ -414,7 +415,7 @@ export function buildOpenApiDocument() {
           responses: { 202: json('Accepted', { type: 'object' }), ...errors(400, 429) },
         }),
       },
-      '/v1/bff/auth/password/reset': {
+      '/v1/auth/password/reset': {
         post: operation({
           tag: 'BFF',
           summary: 'Reset a password with a token',
@@ -423,7 +424,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Updated', { type: 'object' }), ...errors(400, 401, 429) },
         }),
       },
-      '/v1/bff/auth/password/change': {
+      '/v1/auth/password/change': {
         post: operation({
           tag: 'BFF',
           summary: 'Change the signed-in user’s password',
@@ -432,32 +433,73 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Updated', { type: 'object' }), ...errors(400, 401, 403, 429) },
         }),
       },
-      '/v1/bff/events/{path}': {
+      '/v1/queues/{path}': {
         get: operation({
-          tag: 'BFF',
-          summary: 'Proxy a read to pleneo-events',
-          description:
-            'Forwarded to the events service with a short-lived internal identity assertion minted server side. Only paths on the gateway’s allowlist are forwarded; anything else is 404 and never reaches the upstream. Reads retry with jittered backoff, a circuit breaker short-circuits a failing upstream, and mutating methods require the CSRF header.',
+          tag: 'Gateway',
+          summary: "Proxy a queue console call",
+          description: "Forwarded to the queue service. Only allowlisted paths are forwarded; anything else is 404 and never reaches the upstream. Reads retry with jittered backoff, and a circuit breaker short-circuits a failing upstream.",
           security: [{ sessionCookie: [] }],
-          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path on the events service', schema: { type: 'string' } }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
           responses: {
             200: json('Whatever the upstream returned', { type: 'object' }),
             ...errors(401, 403, 404, 429),
-            503: problem('The events service is unreachable or the circuit breaker is open'),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
           },
         }),
       },
-      '/v1/bff/iot/{path}': {
+      '/v1/devices/{path}': {
         get: operation({
-          tag: 'BFF',
-          summary: 'Proxy a read to pleneo-iot',
-          description: 'Same gateway behaviour as `/bff/events`, targeting the IoT service. The device ingest plane is deliberately absent from the allowlist.',
+          tag: 'Gateway',
+          summary: "Proxy a device call",
+          description: "Forwarded to the device service. The device ingest plane is deliberately absent from the allowlist.",
           security: [{ sessionCookie: [] }],
-          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path on the IoT service', schema: { type: 'string' } }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
           responses: {
             200: json('Whatever the upstream returned', { type: 'object' }),
             ...errors(401, 403, 404, 429),
-            503: problem('The IoT service is unreachable or the circuit breaker is open'),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
+          },
+        }),
+      },
+      '/v1/commands/{path}': {
+        get: operation({
+          tag: 'Gateway',
+          summary: "Proxy a command call",
+          description: "Forwarded to the device service.",
+          security: [{ sessionCookie: [] }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
+          responses: {
+            200: json('Whatever the upstream returned', { type: 'object' }),
+            ...errors(401, 403, 404, 429),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
+          },
+        }),
+      },
+      '/v1/alerts/{path}': {
+        get: operation({
+          tag: 'Gateway',
+          summary: "Proxy an alert call",
+          description: "Forwarded to the device service.",
+          security: [{ sessionCookie: [] }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
+          responses: {
+            200: json('Whatever the upstream returned', { type: 'object' }),
+            ...errors(401, 403, 404, 429),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
+          },
+        }),
+      },
+      '/v1/rules/{path}': {
+        get: operation({
+          tag: 'Gateway',
+          summary: "Proxy a rule call",
+          description: "Forwarded to the device service.",
+          security: [{ sessionCookie: [] }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
+          responses: {
+            200: json('Whatever the upstream returned', { type: 'object' }),
+            ...errors(401, 403, 404, 429),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
           },
         }),
       },

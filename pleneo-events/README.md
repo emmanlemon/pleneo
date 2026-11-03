@@ -36,6 +36,12 @@ Admins can send a test message from the pleneo-management console under Queues, 
 
 Set `EMAIL_PROVIDER=gmail`, `GMAIL_USER`, and either `GMAIL_APP_PASSWORD` (2-step verification app password) or `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` for OAuth2. `EMAIL_FROM` must be the Gmail account or a configured alias.
 
+## Queue signals
+
+A job transition marks the queue dirty, and a debounced sender posts one signed `queue.changed` webhook to every subscription that asked for it, at most once per `QUEUE_SIGNAL_INTERVAL_MS` (2s). It carries no payload; it only tells the console to refresh.
+
+It is delivered directly rather than through the job queue, because a delivery job would itself be a queue change and the two would feed each other. Set `QUEUE_SIGNAL_ENABLED=false` to turn it off.
+
 ## Tests
 
 ```bash

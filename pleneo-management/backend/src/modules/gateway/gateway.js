@@ -7,7 +7,7 @@ import { createBreaker } from './circuit-breaker.js';
 import { downstreamHeaders, upstreamHeaders } from './headers.js';
 import { identityEnabled, mintIdentity } from './identity.js';
 import * as metrics from './metrics.js';
-import { UPSTREAMS, matchRoute } from './policy.js';
+import { UPSTREAMS, matchRoute, upstreamPathFor } from './policy.js';
 
 const BODYLESS = new Set(['GET', 'HEAD']);
 const RETRYABLE = new Set([502, 503, 504]);
@@ -48,12 +48,13 @@ async function relay(res, upstream, name) {
   await pipeline(Readable.fromWeb(upstream.body), cap(config.GATEWAY_MAX_RESPONSE_BYTES, exceeded), res);
 }
 
-export function createGateway(name) {
+export function createGateway(name, mount = '') {
   const upstream = UPSTREAMS[name];
   const breaker = breakers.get(name);
 
   return async function gateway(req, res) {
-    const [pathname, query] = req.url.split('?');
+    const [suffix, query] = req.url.split('?');
+    const pathname = `${mount}${suffix === '/' ? '' : suffix}`;
     const route = matchRoute(name, req.method, pathname);
     if (!route) {
       metrics.blocked(name);
@@ -74,7 +75,7 @@ export function createGateway(name) {
       accessToken: identity ? null : req.bff?.accessToken,
       hasBody: body !== undefined,
     });
-    const target = `${upstream.baseUrl()}${upstream.apiPrefix ?? ''}${pathname}${query ? `?${query}` : ''}`;
+    const target = `${upstream.baseUrl()}${upstreamPathFor(name, pathname)}${query ? `?${query}` : ''}`;
     const started = Date.now();
     let response = null;
     let attempts = 0;

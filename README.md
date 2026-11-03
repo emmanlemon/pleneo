@@ -21,7 +21,7 @@ user action ──▶ management API ──(same transaction)──▶ outbox_ev
 pleneo-events ── fan-out in the event transaction ──▶ webhook.deliver jobs ──▶ management POST /v1/webhooks/events (HMAC)
                                                   └──▶ internal handlers ──▶ email.send jobs ──▶ Mailtrap / Gmail / log
 authzero outbox ──(HMAC webhook)──▶ pleneo-events POST /v1/ingest/authzero ──▶ auth.* events ──▶ verification / reset emails
-management webhook handler ──▶ notifications table ──▶ console bell (polling) ──▶ optional email.send job
+management webhook handler ──▶ notifications table ──▶ Socket.IO push ──▶ console bell ──▶ optional email.send job
 
 device ──(device token over MQTT or HTTP)──▶ pleneo-iot ingest ──▶ rules engine ──▶ alert + outbox
                                               └──▶ pleneo-events ──▶ webhook ──▶ notification + alert email
@@ -51,16 +51,20 @@ The console does not poll for notifications. The management API runs a Socket.IO
 pleneo-events ──▶ POST /v1/webhooks/events ──▶ notification row ──▶ Socket.IO ──▶ console updates
 ```
 
-The browser authenticates its handshake with the same session cookie it uses for REST, and each connection joins a private room keyed by user id, so a client only ever receives its own events. Service clients may still present a bearer token. A rejected handshake makes the console revalidate its session. The header shows a Live indicator while the socket is connected, and polling stays as a slow fallback.
+The browser authenticates its handshake with the same session cookie it uses for REST. Every connection joins a room keyed by user id, and an admin also joins an operator room, so an owner sees their own events and an operator sees the fleet. A rejected handshake makes the console revalidate its session. The header shows a Live indicator while the socket is connected.
 
-Events: `notification:new`, `notification:read`, `event:received`.
+**The console does not poll at all.** No query sets a refresh interval. A push names what changed, so the client refreshes that device or project rather than every cached query. The safety nets are window focus, network reconnect, and a full resync when the socket reconnects, since anything raised while it was down was never delivered.
+
+Queue state is the one thing with no domain event behind it, so planeo-events signals it directly. A job transition marks the queue dirty and a debounced sender posts one signed `queue.changed` webhook at most every `QUEUE_SIGNAL_INTERVAL_MS`. It is delivered outside the job queue on purpose: a delivery job would itself be a queue change, and the two would feed each other.
+
+Events: `ready`, `notification:new`, `notification:read`, `event:received`, `queue:changed`.
 
 ## Backend for frontend
 
-The console never holds a token and never learns where the identity provider lives. `pleneo-management` is the only origin its browser code knows; everything else is reached through it.
+The console never holds a token and never learns where the identity provider lives. `pleneo-management` is the only origin its browser code knows, and it serves one flat surface under `/v1`. Nothing in a path names an upstream service, so whether a resource is served here or proxied is invisible to the caller.
 
 ```
-browser ──(session cookie)──▶ pleneo-management /bff/* ──(bearer, server side)──▶ authzero
+browser ──(session cookie)──▶ pleneo-management /v1/* ──(assertion, server side)──▶ authzero
                                                        ├──▶ pleneo-events
                                                        └──▶ pleneo-iot
 ```
@@ -118,7 +122,7 @@ Every message, whatever the provider, goes through the `email.send` queue, so a 
 
 ### Testing delivery from the console
 
-Queues, Email tab, admin only. Enter a recipient and send. The console calls `POST /v1/admin/email/test`, which enqueues an `email.send` job using the `system.test-email` template, then polls the job and reports the outcome, including the provider's error when it fails. It exercises the real path rather than a side channel, so a green result means notifications work.
+Queues, Email tab, admin only. Enter a recipient and send. The console calls `POST /v1/admin/email/test`, which enqueues an `email.send` job using the `system.test-email` template, then follows the job over the socket and reports the outcome, including the provider's error when it fails. It exercises the real path rather than a side channel, so a green result means notifications work.
 
 ```bash
 curl -X POST http://localhost:4100/admin/email/test \

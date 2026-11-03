@@ -27,6 +27,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { connectionVariant } from './device-list';
+import { SimulationControl } from './simulation-control';
 import { TelemetryChart } from './telemetry-chart';
 
 const severityVariant = (severity: string) =>
@@ -69,6 +70,8 @@ export function DeviceDetail({ id }: { id: string }) {
           </span>
         </div>
       </div>
+
+      <SimulationControl deviceId={id} active={device.data.status === 'active'} />
 
       <LatestReadings readings={latest.data ?? []} loading={latest.isPending} />
 

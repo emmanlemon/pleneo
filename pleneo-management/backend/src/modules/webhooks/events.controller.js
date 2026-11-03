@@ -5,7 +5,7 @@ import { DomainErrors } from '#common/errors/domain-errors.js';
 import { verifySignedPayload } from '#common/security/signature.js';
 import { formatZodIssues } from '#common/validation/validator.js';
 import { withTransaction } from '#infra/database/pool.js';
-import { emitToUser } from '#infra/realtime/socket-server.js';
+import { emitToAdmins, emitToOwnerAndAdmins } from '#infra/realtime/socket-server.js';
 import { handleEvent } from './event-handlers.js';
 
 const envelope = z.object({
@@ -40,13 +40,17 @@ export async function receiveEvent(req, res) {
   });
 
   if (outcome !== 'duplicate') {
-    emitToUser(event.payload.ownerId, 'event:received', {
-      type: event.type,
-      eventId: event.id,
-      deviceId: event.payload.deviceId,
-      projectId: event.payload.projectId,
-      occurredAt: event.occurredAt,
-    });
+    if (event.type.startsWith('queue.')) emitToAdmins('queue:changed', { at: event.occurredAt ?? null });
+    else
+      emitToOwnerAndAdmins(event.payload.ownerId, 'event:received', {
+        type: event.type,
+        eventId: event.id,
+        deviceId: event.payload.deviceId,
+        projectId: event.payload.projectId,
+        alertId: event.payload.alertId,
+        ownerId: event.payload.ownerId,
+        occurredAt: event.occurredAt,
+      });
   }
 
   req.log?.info({ eventId: event.id, type: event.type, outcome }, 'inbound event');

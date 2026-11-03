@@ -27,6 +27,7 @@ const { invalidateForEvent, useRealtime } = await import('./use-realtime');
 const { notificationKeys } = await import('@/lib/notifications/hooks');
 const { deviceKeys } = await import('@/lib/devices/hooks');
 const { projectKeys } = await import('@/lib/projects/hooks');
+const { eventsKeys } = await import('@/lib/events/hooks');
 
 const emit = (event: string, payload?: unknown) => {
   if (event === 'connect') socket.connected = true;
@@ -108,18 +109,60 @@ describe('useRealtime', () => {
 });
 
 describe('invalidateForEvent', () => {
-  it('refreshes the caches each event family affects', () => {
+  const harness = () => {
     const queryClient = new QueryClient();
-    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    return { queryClient, invalidate: vi.spyOn(queryClient, 'invalidateQueries') };
+  };
+  const event = (type: string, extra = {}) => ({ type, eventId: 'e1', ...extra });
 
-    invalidateForEvent(queryClient, 'iot.alert.raised');
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: notificationKeys.all });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: deviceKeys.all });
-    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: projectKeys.all });
+  it('refreshes only the device that changed, not every device query', () => {
+    const { queryClient, invalidate } = harness();
+    invalidateForEvent(queryClient, event('iot.device.offline', { deviceId: 'd1' }));
 
-    invalidate.mockClear();
-    invalidateForEvent(queryClient, 'project.created');
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: projectKeys.all });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: deviceKeys.detail('d1') });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['devices', 'list'] });
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: deviceKeys.all });
+  });
+
+  it('keeps an alert away from the project caches and vice versa', () => {
+    const alerts = harness();
+    invalidateForEvent(alerts.queryClient, event('iot.alert.raised', { deviceId: 'd1' }));
+    expect(alerts.invalidate).toHaveBeenCalledWith({ queryKey: ['devices', 'alerts'] });
+    expect(alerts.invalidate).not.toHaveBeenCalledWith({ queryKey: projectKeys.all });
+
+    const projects = harness();
+    invalidateForEvent(projects.queryClient, event('project.created', { projectId: 'p1' }));
+    expect(projects.invalidate).toHaveBeenCalledWith({ queryKey: projectKeys.all });
+    expect(projects.invalidate).toHaveBeenCalledWith({ queryKey: projectKeys.detail('p1') });
+    expect(projects.invalidate).not.toHaveBeenCalledWith({ queryKey: ['devices', 'list'] });
+  });
+
+  it('always refreshes notifications, whatever the event', () => {
+    const { queryClient, invalidate } = harness();
+    invalidateForEvent(queryClient, event('iot.device.online', { deviceId: 'd1' }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: notificationKeys.all });
+  });
+
+  it('ignores an event family it knows nothing about', () => {
+    const { queryClient, invalidate } = harness();
+    invalidateForEvent(queryClient, event('auth.user_locked'));
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: notificationKeys.all });
+  });
+});
+
+describe('push instead of polling', () => {
+  it('refreshes the queue console when the queue signals a change', async () => {
+    const { invalidate } = setup();
+    invalidate.mockClear();
+    emit('queue:changed', { at: null });
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: eventsKeys.all }));
+  });
+
+  it('resyncs everything once when the socket comes back', async () => {
+    const { invalidate } = setup();
+    invalidate.mockClear();
+    emit('ready', { userId: 'u1', admin: false, serverTime: 'now' });
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith());
   });
 });

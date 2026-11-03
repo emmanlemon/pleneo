@@ -2,10 +2,11 @@ import { io, type Socket } from 'socket.io-client';
 import { env } from '@/lib/env';
 
 export type RealtimeEvents = {
-  ready: { userId: string; serverTime: string };
+  ready: { userId: string; admin: boolean; serverTime: string };
   'notification:new': { notification: { id: string }; unreadDelta: number };
   'notification:read': { id?: string; all: boolean; updated?: number; removed?: boolean };
-  'event:received': { type: string; eventId: string; deviceId?: string; projectId?: string };
+  'event:received': { type: string; eventId: string; deviceId?: string; projectId?: string; alertId?: string; ownerId?: string };
+  'queue:changed': { at: string | null };
 };
 
 let socket: Socket | null = null;

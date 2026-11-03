@@ -1,9 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { devicesApi, type DeviceListParams, type RegisterDeviceInput } from './api';
+import { devicesApi, type DeviceListParams, type RegisterDeviceInput, type StartSimulationInput } from './api';
 
-const LIVE_MS = 10_000;
 
 export const deviceKeys = {
   all: ['devices'] as const,
@@ -15,20 +14,20 @@ export const deviceKeys = {
   commands: (id: string) => ['devices', 'commands', id] as const,
   alerts: (params: Record<string, unknown>) => ['devices', 'alerts', params] as const,
   types: ['devices', 'types'] as const,
+  simulation: (id: string) => ['devices', 'simulation', id] as const,
 };
 
 export const useDevices = (params: DeviceListParams = {}) =>
-  useQuery({ queryKey: deviceKeys.list(params), queryFn: () => devicesApi.list(params), refetchInterval: LIVE_MS });
+  useQuery({ queryKey: deviceKeys.list(params), queryFn: () => devicesApi.list(params) });
 
 export const useDeviceStats = () =>
-  useQuery({ queryKey: deviceKeys.stats, queryFn: devicesApi.stats, refetchInterval: LIVE_MS });
+  useQuery({ queryKey: deviceKeys.stats, queryFn: devicesApi.stats });
 
 export const useDevice = (id: string) =>
   useQuery({
     queryKey: deviceKeys.detail(id),
     queryFn: () => devicesApi.get(id),
-    enabled: Boolean(id),
-    refetchInterval: LIVE_MS,
+    enabled: Boolean(id)
   });
 
 export const useDeviceTypes = () =>
@@ -38,28 +37,25 @@ export const useLatestReadings = (id: string) =>
   useQuery({
     queryKey: deviceKeys.latest(id),
     queryFn: () => devicesApi.latest(id),
-    enabled: Boolean(id),
-    refetchInterval: LIVE_MS,
+    enabled: Boolean(id)
   });
 
 export const useSeries = (id: string, metric: string) =>
   useQuery({
     queryKey: deviceKeys.series(id, metric),
     queryFn: () => devicesApi.series(id, metric),
-    enabled: Boolean(id && metric),
-    refetchInterval: LIVE_MS,
+    enabled: Boolean(id && metric)
   });
 
 export const useCommands = (id: string) =>
   useQuery({
     queryKey: deviceKeys.commands(id),
     queryFn: () => devicesApi.commands(id),
-    enabled: Boolean(id),
-    refetchInterval: LIVE_MS,
+    enabled: Boolean(id)
   });
 
 export const useAlerts = (params: { deviceId?: string; status?: string; limit?: number } = {}) =>
-  useQuery({ queryKey: deviceKeys.alerts(params), queryFn: () => devicesApi.alerts(params), refetchInterval: LIVE_MS });
+  useQuery({ queryKey: deviceKeys.alerts(params), queryFn: () => devicesApi.alerts(params) });
 
 function useInvalidate() {
   const queryClient = useQueryClient();
@@ -85,7 +81,7 @@ export function useIssueCommand(id: string) {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (input: { type: string; payload?: Record<string, unknown> }) => devicesApi.issueCommand(id, input),
-    onSuccess: invalidate,
+    onSuccess: invalidate
   });
 }
 
@@ -102,4 +98,17 @@ export function useAcknowledgeAlert() {
 export function useResolveAlert() {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (alertId: string) => devicesApi.resolveAlert(alertId), onSuccess: invalidate });
+}
+
+export const useSimulation = (id: string) =>
+  useQuery({ queryKey: deviceKeys.simulation(id), queryFn: () => devicesApi.simulation(id), enabled: Boolean(id) });
+
+export function useStartSimulation(id: string) {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: (input: StartSimulationInput) => devicesApi.startSimulation(id, input), onSuccess: invalidate });
+}
+
+export function useStopSimulation(id: string) {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: () => devicesApi.stopSimulation(id), onSuccess: invalidate });
 }

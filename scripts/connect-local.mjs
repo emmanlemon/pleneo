@@ -166,7 +166,7 @@ async function main() {
       'scripts/seed-subscription.js',
       'pleneo-management',
       `${API_URL}/v1/webhooks/events`,
-      'project.*,iot.*',
+      'project.*,iot.*,queue.*',
       managementWebhookSecret,
     ],
     {
@@ -181,7 +181,7 @@ async function main() {
       'Connected:',
       `  authzero  -> ${EVENTS_URL}/v1/ingest/authzero (signed outbox webhook)`,
       `  backend   -> ${EVENTS_URL} via client ${client.client_id} (outbox relay + email jobs)`,
-      `  events    -> ${API_URL}/v1/webhooks/events (subscription pleneo-management, project.* and iot.*)`,
+      `  events    -> ${API_URL}/v1/webhooks/events (subscription pleneo-management, project.*, iot.* and queue.*)`,
       `  iot       -> ${EVENTS_URL} via client ${iotClient.client_id} (device, alert and lifecycle events)`,
       '',
       'Restart authzero, the management backend and pleneo-iot so they pick up the new .env values.',

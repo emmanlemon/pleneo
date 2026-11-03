@@ -98,39 +98,57 @@ export type DeviceListParams = {
 
 export type RegisterDeviceInput = { externalId: string; name: string; deviceTypeId: string; site?: string };
 
+export type Simulation = {
+  running: boolean;
+  deviceId: string;
+  intervalMs?: number;
+  spike?: boolean;
+  readings?: number;
+  alerts?: number;
+  startedAt?: string;
+  lastReadingAt?: string | null;
+  expiresAt?: string;
+};
+export type StartSimulationInput = { intervalMs?: number; spike?: boolean };
+
 export const devicesApi = {
   list: (params: DeviceListParams = {}) =>
-    bffHttp.get<{ devices: Device[]; nextCursor: string | null }>('/iot/devices', { params }).then((r) => r.data),
-  stats: () => bffHttp.get<DeviceStats>('/iot/devices/stats').then((r) => r.data),
-  get: (id: string) => bffHttp.get<DeviceDetail>(`/iot/devices/${id}`).then((r) => r.data),
-  register: (input: RegisterDeviceInput) => bffHttp.post<RegisteredDevice>('/iot/devices', input).then((r) => r.data),
+    bffHttp.get<{ devices: Device[]; nextCursor: string | null }>('/devices', { params }).then((r) => r.data),
+  stats: () => bffHttp.get<DeviceStats>('/devices/stats').then((r) => r.data),
+  get: (id: string) => bffHttp.get<DeviceDetail>(`/devices/${id}`).then((r) => r.data),
+  register: (input: RegisterDeviceInput) => bffHttp.post<RegisteredDevice>('/devices', input).then((r) => r.data),
   update: (id: string, input: Partial<Pick<Device, 'name' | 'site' | 'status'>>) =>
-    bffHttp.patch<Device>(`/iot/devices/${id}`, input).then((r) => r.data),
-  remove: (id: string) => bffHttp.delete(`/iot/devices/${id}`).then(() => undefined),
+    bffHttp.patch<Device>(`/devices/${id}`, input).then((r) => r.data),
+  remove: (id: string) => bffHttp.delete(`/devices/${id}`).then(() => undefined),
   rotateCredential: (id: string) =>
-    bffHttp.post<{ id: string; token: string }>(`/iot/devices/${id}/credentials`, {}).then((r) => r.data),
+    bffHttp.post<{ id: string; token: string }>(`/devices/${id}/credentials`, {}).then((r) => r.data),
   setDesiredState: (id: string, desired: Record<string, unknown>) =>
-    bffHttp.put<DeviceState>(`/iot/devices/${id}/state/desired`, desired).then((r) => r.data),
+    bffHttp.put<DeviceState>(`/devices/${id}/state/desired`, desired).then((r) => r.data),
 
-  types: () => bffHttp.get<{ deviceTypes: DeviceType[] }>('/iot/devices/types').then((r) => r.data.deviceTypes),
-  latest: (id: string) => bffHttp.get<{ latest: Reading[] }>(`/iot/devices/${id}/latest`).then((r) => r.data.latest),
+  types: () => bffHttp.get<{ deviceTypes: DeviceType[] }>('/devices/types').then((r) => r.data.deviceTypes),
+  latest: (id: string) => bffHttp.get<{ latest: Reading[] }>(`/devices/${id}/latest`).then((r) => r.data.latest),
   series: (id: string, metric: string, limit = 200) =>
     bffHttp
-      .get<{ metric: string; points: Reading[] }>(`/iot/devices/${id}/series`, { params: { metric, limit } })
+      .get<{ metric: string; points: Reading[] }>(`/devices/${id}/series`, { params: { metric, limit } })
       .then((r) => r.data),
 
   commands: (id: string) =>
-    bffHttp.get<{ commands: Command[] }>(`/iot/devices/${id}/commands`).then((r) => r.data.commands),
+    bffHttp.get<{ commands: Command[] }>(`/devices/${id}/commands`).then((r) => r.data.commands),
   issueCommand: (id: string, input: { type: string; payload?: Record<string, unknown> }) =>
-    bffHttp.post<Command>(`/iot/devices/${id}/commands`, input).then((r) => r.data),
-  cancelCommand: (commandId: string) => bffHttp.post<Command>(`/iot/commands/${commandId}/cancel`).then((r) => r.data),
+    bffHttp.post<Command>(`/devices/${id}/commands`, input).then((r) => r.data),
+  cancelCommand: (commandId: string) => bffHttp.post<Command>(`/commands/${commandId}/cancel`).then((r) => r.data),
 
   alerts: (params: { deviceId?: string; status?: string; limit?: number } = {}) =>
-    bffHttp.get<{ alerts: Alert[]; nextBefore: string | null }>('/iot/alerts', { params }).then((r) => r.data),
-  alertStats: () => bffHttp.get<{ open: number; critical: number }>('/iot/alerts/stats').then((r) => r.data),
-  acknowledgeAlert: (id: string) => bffHttp.post<Alert>(`/iot/alerts/${id}/acknowledge`).then((r) => r.data),
-  resolveAlert: (id: string) => bffHttp.post<Alert>(`/iot/alerts/${id}/resolve`).then((r) => r.data),
+    bffHttp.get<{ alerts: Alert[]; nextBefore: string | null }>('/alerts', { params }).then((r) => r.data),
+  alertStats: () => bffHttp.get<{ open: number; critical: number }>('/alerts/stats').then((r) => r.data),
+  acknowledgeAlert: (id: string) => bffHttp.post<Alert>(`/alerts/${id}/acknowledge`).then((r) => r.data),
+  resolveAlert: (id: string) => bffHttp.post<Alert>(`/alerts/${id}/resolve`).then((r) => r.data),
+
+  simulation: (id: string) => bffHttp.get<Simulation>(`/devices/${id}/simulation`).then((r) => r.data),
+  startSimulation: (id: string, input: StartSimulationInput = {}) =>
+    bffHttp.post<Simulation>(`/devices/${id}/simulation`, input).then((r) => r.data),
+  stopSimulation: (id: string) => bffHttp.delete<Simulation>(`/devices/${id}/simulation`).then((r) => r.data),
 
   rules: (params: { deviceId?: string } = {}) =>
-    bffHttp.get<{ rules: Rule[] }>('/iot/rules', { params }).then((r) => r.data.rules),
+    bffHttp.get<{ rules: Rule[] }>('/rules', { params }).then((r) => r.data.rules),
 };

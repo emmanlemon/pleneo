@@ -31,5 +31,9 @@ export const DomainErrors = {
   duplicateExternalId: () =>
     new ConflictError('A device with that external id already exists', 'DUPLICATE_EXTERNAL_ID'),
 
+  simulationDisabled: () => new ForbiddenError('Device simulation is disabled', 'SIMULATION_DISABLED'),
+  simulationLimitReached: (max) => new ConflictError(`At most ${max} devices may be simulated at once`, 'SIMULATION_LIMIT_REACHED'),
+  deviceNotActivated: () => new ConflictError('The device must be activated before it can be simulated', 'DEVICE_NOT_ACTIVATED'),
+
   notFound: (entity = 'Resource') => new NotFoundError(`${entity} not found`, 'NOT_FOUND'),
 };

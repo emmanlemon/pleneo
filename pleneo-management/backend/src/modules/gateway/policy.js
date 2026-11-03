@@ -12,17 +12,17 @@ const route = (method, path, overrides = {}) => ({
 });
 
 const eventsRoutes = [
-  route('GET', '/admin/stats'),
-  route('GET', '/admin/jobs'),
-  route('GET', '/admin/events'),
-  route('GET', '/admin/schedules'),
-  route('GET', '/admin/subscriptions'),
-  route('GET', '/admin/jobs/:id'),
-  route('POST', '/admin/jobs/:id/retry'),
-  route('POST', '/admin/jobs/:id/cancel'),
-  route('PATCH', '/admin/schedules/:id'),
-  route('POST', '/admin/schedules/:id/run'),
-  route('PATCH', '/admin/subscriptions/:id'),
+  route('GET', '/queues/stats'),
+  route('GET', '/queues/jobs'),
+  route('GET', '/queues/events'),
+  route('GET', '/queues/schedules'),
+  route('GET', '/queues/subscriptions'),
+  route('GET', '/queues/jobs/:id'),
+  route('POST', '/queues/jobs/:id/retry'),
+  route('POST', '/queues/jobs/:id/cancel'),
+  route('PATCH', '/queues/schedules/:id'),
+  route('POST', '/queues/schedules/:id/run'),
+  route('PATCH', '/queues/subscriptions/:id'),
 ];
 
 const iotRoutes = [
@@ -34,6 +34,9 @@ const iotRoutes = [
   route('PATCH', '/devices/:id'),
   route('DELETE', '/devices/:id'),
   route('POST', '/devices/:id/credentials'),
+  route('GET', '/devices/:id/simulation'),
+  route('POST', '/devices/:id/simulation'),
+  route('DELETE', '/devices/:id/simulation'),
   route('PUT', '/devices/:id/state/desired'),
   route('GET', '/devices/:id/latest'),
   route('GET', '/devices/:id/series', { timeoutMs: 15_000 }),
@@ -48,13 +51,25 @@ const iotRoutes = [
 ];
 
 /**
- * `routes` are console-facing paths, the part after `/v1/bff/<name>`. `apiPrefix` is the
- * upstream's own API version, added when the target URL is built, so the console's paths
- * stay stable when an upstream version moves.
+ * `routes` and `mounts` are what the console sees, under `/v1`. Whether a path is served here
+ * or proxied is not its business, so nothing in them names an upstream service. `rewrite` maps
+ * a console path onto the upstream's own surface when the two differ.
  */
 export const UPSTREAMS = {
-  events: { audience: 'pleneo-events', baseUrl: () => config.EVENTS_URL, apiPrefix: '/v1', routes: eventsRoutes },
-  iot: { audience: 'pleneo-iot', baseUrl: () => config.IOT_URL, apiPrefix: '/v1', routes: iotRoutes },
+  events: {
+    audience: 'pleneo-events',
+    baseUrl: () => config.EVENTS_URL,
+    mounts: ['/queues'],
+    rewrite: (path) => `/v1/admin${path.slice('/queues'.length)}`,
+    routes: eventsRoutes,
+  },
+  iot: {
+    audience: 'pleneo-iot',
+    baseUrl: () => config.IOT_URL,
+    mounts: ['/devices', '/commands', '/alerts', '/rules'],
+    rewrite: (path) => `/v1${path}`,
+    routes: iotRoutes,
+  },
 };
 
 const matches = (pattern, actual) =>
@@ -64,5 +79,7 @@ export function matchRoute(name, method, pathname) {
   const actual = split(pathname);
   return UPSTREAMS[name].routes.find((r) => r.method === method && matches(r.segments, actual)) ?? null;
 }
+
+export const upstreamPathFor = (name, consolePath) => UPSTREAMS[name].rewrite(consolePath);
 
 export const routeCount = (name) => UPSTREAMS[name].routes.length;
