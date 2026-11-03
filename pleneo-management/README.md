@@ -9,10 +9,10 @@ frontend/   Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui). zod + r
 
 ## Backend for frontend
 
-`/bff/*` is a token handler. The browser posts credentials to the gateway, which calls authzero server side, encrypts both tokens with AES-256-GCM and keeps them in `bff_sessions`. The browser gets an httpOnly `pleneo_session` cookie and a readable `pleneo_csrf` cookie, never a token, and never the provider's address.
+`/v1/bff/*` is a token handler. The browser posts credentials to the gateway, which calls authzero server side, encrypts both tokens with AES-256-GCM and keeps them in `bff_sessions`. The browser gets an httpOnly `pleneo_session` cookie and a readable `pleneo_csrf` cookie, never a token, and never the provider's address.
 
 - `modules/bff/session.service.js` resolves a session by the SHA-256 of the cookie, refreshes under a row lock when the access token is within `BFF_REFRESH_SKEW_SECONDS` of expiry, and revokes the session if the refresh fails.
-- `modules/gateway/*` forwards `/bff/events/*` and `/bff/iot/*` upstream. See the gateway section below.
+- `modules/gateway/*` forwards `/v1/bff/events/*` and `/v1/bff/iot/*` upstream. See the gateway section below.
 - Mutating requests must echo the CSRF cookie in `X-CSRF-Token`; the gateway compares it against the stored hash.
 - `BFF_SESSION_KEY` is 32 bytes of hex and is required while `BFF_ENABLED=true`, which also requires `IOT_URL`. `BFF_COOKIE_SECURE` must be true in production.
 - Expired sessions are pruned by the maintenance job. Set `BFF_ENABLED=false` to go back to bearer tokens.
@@ -25,7 +25,7 @@ frontend/   Next.js 16 (App Router, TypeScript, Tailwind v4, shadcn/ui). zod + r
 - `circuit-breaker.js` is one breaker per upstream: closed, open after `GATEWAY_BREAKER_THRESHOLD` failures, then half-open for a single probe after `GATEWAY_BREAKER_RESET_MS`. While open the gateway answers 503 with `Retry-After` without dialling out.
 - `headers.js` drops hop-by-hop headers, cookies and any client-supplied `Authorization` or `X-Pleneo-Identity` on the way in, sets the forwarding headers itself, and on the way out passes a short allowlist while discarding `Set-Cookie`.
 - `identity.js` mints the upstream assertion. See below.
-- `metrics.js` counts requests, status classes, retries, short circuits, blocked routes and latency per upstream, served by `GET /admin/gateway` to admins.
+- `metrics.js` counts requests, status classes, retries, short circuits, blocked routes and latency per upstream, served by `GET /v1/admin/gateway` to admins.
 - `gateway.js` composes them: match, breaker check, mint, attempt with jittered exponential backoff on reads only, then stream the response back under `GATEWAY_MAX_RESPONSE_BYTES`.
 
 Per-principal throughput is capped by `GATEWAY_RATE_LIMIT_PER_MINUTE`. Authorization stays with the upstream, which is authoritative for its own rules, so the gateway does not duplicate role checks and cannot drift from them.
@@ -50,7 +50,7 @@ Same layering as authzero: `api/` → `modules/<feature>/{routes,controller,vali
 - `src/lib/api/http.ts`: one origin, `NEXT_PUBLIC_BFF_URL`. Both axios instances send credentials and attach `X-CSRF-Token` to mutating requests. The browser stores no token.
 - `src/lib/api/problem.ts`: `ApiError` from problem details and `applyFieldErrors` to push server field errors into react-hook-form.
 - `src/lib/auth/*`: zod schemas mirroring authzero's rules, typed API against `/bff/auth/*`, TanStack hooks (`useSession`, `useLogin`, `useLogout`, …).
-- `src/lib/events/api.ts` and `src/lib/devices/api.ts` call `/bff/events/*` and `/bff/iot/*`; the console never addresses those services directly.
+- `src/lib/events/api.ts` and `src/lib/devices/api.ts` call `/v1/bff/events/*` and `/v1/bff/iot/*`; the console never addresses those services directly.
 - `src/components/auth-guard.tsx` protects the `(app)` route group client-side and redirects to `/login?next=`.
 - UI is shadcn/ui (`src/components/ui`, `components.json`). Add more with `npx shadcn@latest add <component>`.
 
@@ -83,9 +83,9 @@ npm run verify    # all of the above, also run by the Husky pre-push hook
 
 - **Outbox** (`backend/src/infrastructure/messaging`): project writes insert an `outbox_events` row in the same transaction. A relay publishes rows to pleneo-events with a cached client-credentials token (`EVENTS_CLIENT_ID` / `EVENTS_CLIENT_SECRET`, scopes `events:publish jobs:enqueue`) and backs off exponentially on failure.
 - **Inbound webhook** `POST /webhooks/events`: verifies `x-pleneo-signature` against `EVENTS_WEBHOOK_SECRET`, deduplicates on event id and turns `project.*` events into in-app notifications (plus `email.send` jobs when `NOTIFY_EMAIL_ENABLED=true`).
-- **Notifications API** `/notifications` (list, unread count, mark read, mark all, delete) backs the bell in the console header and the `/notifications` page.
+- **Notifications API** `/v1/notifications` (list, unread count, mark read, mark all, delete) backs the bell in the console header and the `/v1/notifications` page.
 - **Queue console** `/admin/queues` (admin role): overview, jobs with retry/cancel and attempt history, dead letter, schedules (run now, pause), webhook subscriptions and the event stream, all read from pleneo-events `/admin/*` through the BFF proxy.
-- **Email test** `/admin/queues`, Email tab (admin role): `POST /admin/email/test` enqueues an `email.send` job on the `email` queue using the `system.test-email` template, then the card polls that job and reports the outcome with the provider's error when delivery fails. It uses the same pipeline a real notification does, so it proves the whole path rather than just the provider credentials. The tab also shows which provider pleneo-events is running.
+- **Email test** `/admin/queues`, Email tab (admin role): `POST /v1/admin/email/test` enqueues an `email.send` job on the `email` queue using the `system.test-email` template, then the card polls that job and reports the outcome with the provider's error when delivery fails. It uses the same pipeline a real notification does, so it proves the whole path rather than just the provider credentials. The tab also shows which provider pleneo-events is running.
 
 ## API reference and realtime
 

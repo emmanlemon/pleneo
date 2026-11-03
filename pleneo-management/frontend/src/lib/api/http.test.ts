@@ -34,7 +34,7 @@ afterEach(() => {
 describe('gateway client', () => {
   it('sends every request to the BFF origin with credentials', async () => {
     await bffHttp.get('/auth/session');
-    expect(calls[0].url).toBe('http://localhost:4100/bff/auth/session');
+    expect(calls[0].url).toBe('http://localhost:4100/v1/bff/auth/session');
     expect(calls[0].credentials).toBe(true);
   });
 

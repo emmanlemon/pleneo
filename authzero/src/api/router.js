@@ -11,8 +11,8 @@ export const router = Router();
 
 router.use(docsRouter);
 router.use(systemRouter);
-router.use('/auth/mfa', mfaRouter);
-router.use('/auth', authRouter);
-router.use('/users', usersRouter);
-router.use('/oauth', oauthRouter);
-router.use('/admin', adminRouter);
+router.use('/v1/auth/mfa', mfaRouter);
+router.use('/v1/auth', authRouter);
+router.use('/v1/users', usersRouter);
+router.use('/v1/oauth', oauthRouter);
+router.use('/v1/admin', adminRouter);

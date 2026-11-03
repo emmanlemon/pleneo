@@ -253,7 +253,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/devices': {
+      '/v1/devices': {
         get: operation({
           tag: 'Devices',
           summary: 'List devices',
@@ -288,14 +288,14 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/devices/stats': {
+      '/v1/devices/stats': {
         get: operation({
           tag: 'Devices',
           summary: 'Fleet counters',
           responses: { 200: json('Counts by status and connection', { type: 'object' }), ...errors(401) },
         }),
       },
-      '/devices/types': {
+      '/v1/devices/types': {
         get: operation({
           tag: 'Devices',
           summary: 'List device types',
@@ -310,7 +310,7 @@ export function buildOpenApiDocument() {
           responses: { 201: json('Created', { type: 'object' }), ...errors(400, 401, 403, 409) },
         }),
       },
-      '/devices/{id}': {
+      '/v1/devices/{id}': {
         get: operation({
           tag: 'Devices',
           summary: 'Get a device with its state and credentials',
@@ -337,7 +337,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Decommissioned' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/devices/{id}/credentials': {
+      '/v1/devices/{id}/credentials': {
         post: operation({
           tag: 'Devices',
           summary: 'Issue a device credential',
@@ -351,7 +351,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/devices/{id}/credentials/{credentialId}': {
+      '/v1/devices/{id}/credentials/{credentialId}': {
         delete: operation({
           tag: 'Devices',
           summary: 'Revoke one credential',
@@ -359,7 +359,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Revoked' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/devices/{id}/state/desired': {
+      '/v1/devices/{id}/state/desired': {
         put: operation({
           tag: 'Devices',
           summary: 'Set desired state',
@@ -369,7 +369,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Stored', ref('DeviceState')), ...errors(400, 401, 403, 404) },
         }),
       },
-      '/devices/{id}/latest': {
+      '/v1/devices/{id}/latest': {
         get: operation({
           tag: 'Telemetry',
           summary: 'Latest reading per metric',
@@ -383,7 +383,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/devices/{id}/series': {
+      '/v1/devices/{id}/series': {
         get: operation({
           tag: 'Telemetry',
           summary: 'Readings for one metric',
@@ -405,7 +405,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/devices/{id}/commands': {
+      '/v1/devices/{id}/commands': {
         get: operation({
           tag: 'Commands',
           summary: 'List commands for a device',
@@ -447,7 +447,7 @@ export function buildOpenApiDocument() {
           responses: { 201: json('Queued', ref('Command')), ...errors(400, 401, 403, 404) },
         }),
       },
-      '/commands/{id}/cancel': {
+      '/v1/commands/{id}/cancel': {
         post: operation({
           tag: 'Commands',
           summary: 'Cancel a pending command',
@@ -455,7 +455,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Cancelled', ref('Command')), ...errors(400, 401, 403, 404, 409) },
         }),
       },
-      '/rules': {
+      '/v1/rules': {
         get: operation({
           tag: 'Rules',
           summary: 'List threshold rules',
@@ -502,7 +502,7 @@ export function buildOpenApiDocument() {
           responses: { 201: json('Created', ref('Rule')), ...errors(400, 401, 403) },
         }),
       },
-      '/rules/{id}': {
+      '/v1/rules/{id}': {
         patch: operation({
           tag: 'Rules',
           summary: 'Update a rule',
@@ -536,7 +536,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Deleted' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/alerts': {
+      '/v1/alerts': {
         get: operation({
           tag: 'Alerts',
           summary: 'List alerts',
@@ -556,14 +556,14 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/alerts/stats': {
+      '/v1/alerts/stats': {
         get: operation({
           tag: 'Alerts',
           summary: 'Open and critical counts',
           responses: { 200: json('Counters', { type: 'object' }), ...errors(401) },
         }),
       },
-      '/alerts/{id}/acknowledge': {
+      '/v1/alerts/{id}/acknowledge': {
         post: operation({
           tag: 'Alerts',
           summary: 'Acknowledge an alert',
@@ -571,7 +571,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Acknowledged', ref('Alert')), ...errors(400, 401, 403, 404, 409) },
         }),
       },
-      '/alerts/{id}/resolve': {
+      '/v1/alerts/{id}/resolve': {
         post: operation({
           tag: 'Alerts',
           summary: 'Resolve an alert',

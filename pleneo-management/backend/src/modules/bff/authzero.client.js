@@ -39,18 +39,18 @@ async function call(path, { method = 'POST', body, token } = {}) {
   );
 }
 
-export const login = (credentials) => call('/auth/login', { body: credentials });
-export const loginMfa = (payload) => call('/auth/login/mfa', { body: payload });
-export const refresh = (refreshToken) => call('/auth/refresh', { body: { refreshToken } });
-export const logout = (accessToken) => call('/auth/logout', { token: accessToken }).catch(() => undefined);
-export const profile = (accessToken) => call('/users/me', { method: 'GET', token: accessToken });
+export const login = (credentials) => call('/v1/auth/login', { body: credentials });
+export const loginMfa = (payload) => call('/v1/auth/login/mfa', { body: payload });
+export const refresh = (refreshToken) => call('/v1/auth/refresh', { body: { refreshToken } });
+export const logout = (accessToken) => call('/v1/auth/logout', { token: accessToken }).catch(() => undefined);
+export const profile = (accessToken) => call('/v1/users/me', { method: 'GET', token: accessToken });
 
-export const register = (payload) => call('/auth/register', { body: payload });
-export const verifyEmail = (payload) => call('/auth/email/verify', { body: payload });
-export const resendVerification = (payload) => call('/auth/email/resend', { body: payload });
-export const forgotPassword = (payload) => call('/auth/password/forgot', { body: payload });
-export const resetPassword = (payload) => call('/auth/password/reset', { body: payload });
-export const changePassword = (payload, accessToken) => call('/auth/password/change', { body: payload, token: accessToken });
+export const register = (payload) => call('/v1/auth/register', { body: payload });
+export const verifyEmail = (payload) => call('/v1/auth/email/verify', { body: payload });
+export const resendVerification = (payload) => call('/v1/auth/email/resend', { body: payload });
+export const forgotPassword = (payload) => call('/v1/auth/password/forgot', { body: payload });
+export const resetPassword = (payload) => call('/v1/auth/password/reset', { body: payload });
+export const changePassword = (payload, accessToken) => call('/v1/auth/password/change', { body: payload, token: accessToken });
 
 export function accessTokenExpiry(accessToken) {
   const [, claims] = accessToken.split('.');

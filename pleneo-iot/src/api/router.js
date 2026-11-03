@@ -19,7 +19,7 @@ router.get('/capabilities', system.capabilities);
 
 router.use('/v1/device', deviceApiRouter);
 
-router.use('/devices', authenticate, deviceCommandsRouter, telemetryRouter, devicesRouter);
-router.use('/commands', authenticate, commandsRouter);
-router.use('/rules', authenticate, rulesRouter);
-router.use('/alerts', authenticate, alertsRouter);
+router.use('/v1/devices', authenticate, deviceCommandsRouter, telemetryRouter, devicesRouter);
+router.use('/v1/commands', authenticate, commandsRouter);
+router.use('/v1/rules', authenticate, rulesRouter);
+router.use('/v1/alerts', authenticate, alertsRouter);

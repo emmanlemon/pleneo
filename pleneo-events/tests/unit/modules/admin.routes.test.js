@@ -33,35 +33,35 @@ beforeEach(() => asAdmin());
 describe('admin authorization', () => {
   it('allows admins and manage-scoped clients only', async () => {
     anonymous();
-    expectProblem(await api().get('/admin/stats'), 401, 'AUTHENTICATION_REQUIRED');
+    expectProblem(await api().get('/v1/admin/stats'), 401, 'AUTHENTICATION_REQUIRED');
     asUser();
-    expectProblem(await api().get('/admin/stats'), 403, 'INSUFFICIENT_SCOPE');
+    expectProblem(await api().get('/v1/admin/stats'), 403, 'INSUFFICIENT_SCOPE');
     asClient(['events:publish']);
-    expectProblem(await api().get('/admin/stats'), 403, 'INSUFFICIENT_SCOPE');
+    expectProblem(await api().get('/v1/admin/stats'), 403, 'INSUFFICIENT_SCOPE');
     asClient(['events:manage']);
     stats.overview.mockResolvedValue({ queues: {}, throughput: [], types: [] });
-    expect((await api().get('/admin/stats')).status).toBe(200);
+    expect((await api().get('/v1/admin/stats')).status).toBe(200);
   });
 });
 
 describe('jobs administration', () => {
   it('lists with validated filters and exposes handler types in stats', async () => {
     queue.listJobs.mockResolvedValue([{ id: JOB_ID, created_at: '2026-01-01T00:00:00.000Z' }]);
-    const res = await api().get('/admin/jobs?status=dead&queue=webhooks&limit=1');
+    const res = await api().get('/v1/admin/jobs?status=dead&queue=webhooks&limit=1');
     expect(res.body.nextBefore).toBe('2026-01-01T00:00:00.000Z');
     expect(queue.listJobs).toHaveBeenCalledWith({ status: 'dead', queue: 'webhooks', limit: 1 });
-    expectProblem(await api().get('/admin/jobs?status=bogus'), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().get('/v1/admin/jobs?status=bogus'), 400, 'VALIDATION_FAILED');
     stats.overview.mockResolvedValue({ queues: {}, throughput: [], types: [] });
-    expect((await api().get('/admin/stats')).body.handlerTypes).toContain('webhook.deliver');
+    expect((await api().get('/v1/admin/stats')).body.handlerTypes).toContain('webhook.deliver');
   });
 
   it('retries and cancels through the service, mapping invalid transitions', async () => {
     queue.retryJob.mockResolvedValue({ id: JOB_ID, status: 'pending' });
-    expect((await api().post(`/admin/jobs/${JOB_ID}/retry`)).body.status).toBe('pending');
+    expect((await api().post(`/v1/admin/jobs/${JOB_ID}/retry`)).body.status).toBe('pending');
     queue.cancelJob.mockRejectedValue(DomainErrors.invalidTransition('succeeded', 'cancelled'));
-    expectProblem(await api().post(`/admin/jobs/${JOB_ID}/cancel`), 409, 'INVALID_JOB_TRANSITION');
+    expectProblem(await api().post(`/v1/admin/jobs/${JOB_ID}/cancel`), 409, 'INVALID_JOB_TRANSITION');
     queue.getJob.mockRejectedValue(DomainErrors.notFound('Job'));
-    expectProblem(await api().get(`/admin/jobs/${JOB_ID}`), 404, 'NOT_FOUND');
+    expectProblem(await api().get(`/v1/admin/jobs/${JOB_ID}`), 404, 'NOT_FOUND');
   });
 });
 
@@ -75,7 +75,7 @@ describe('subscriptions administration', () => {
       status: 'active',
     }));
     const res = await api()
-      .post('/admin/subscriptions')
+      .post('/v1/admin/subscriptions')
       .send({ name: 'pleneo-management', url: 'https://api.example.com/webhooks/events', eventTypes: ['project.*'] });
     expect(res.status).toBe(201);
     expect(res.body.secret).toHaveLength(64);
@@ -85,14 +85,14 @@ describe('subscriptions administration', () => {
   it('validates event type patterns and names', async () => {
     expectProblem(
       await api()
-        .post('/admin/subscriptions')
+        .post('/v1/admin/subscriptions')
         .send({ name: 'Bad Name', url: 'https://x.io', eventTypes: ['project.*'] }),
       400,
       'VALIDATION_FAILED',
     );
     expectProblem(
       await api()
-        .post('/admin/subscriptions')
+        .post('/v1/admin/subscriptions')
         .send({ name: 'ok', url: 'https://x.io', eventTypes: ['*.created'] }),
       400,
       'VALIDATION_FAILED',
@@ -104,17 +104,17 @@ describe('schedules administration', () => {
   it('creates a schedule with a computed next run and rejects unknown job types or bad cron', async () => {
     schedules.create.mockImplementation(async (input) => ({ id: SUBSCRIPTION_ID, ...input }));
     const res = await api()
-      .post('/admin/schedules')
+      .post('/v1/admin/schedules')
       .send({ name: 'nightly.maintenance', cron: '0 2 * * *', jobType: 'queue.maintenance', queue: 'system' });
     expect(res.status).toBe(201);
     expect(new Date(schedules.create.mock.calls[0][0].nextRunAt).getTime()).toBeGreaterThan(Date.now());
     expectProblem(
-      await api().post('/admin/schedules').send({ name: 'x.y', cron: '0 2 * * *', jobType: 'nope.job' }),
+      await api().post('/v1/admin/schedules').send({ name: 'x.y', cron: '0 2 * * *', jobType: 'nope.job' }),
       400,
       'UNKNOWN_JOB_TYPE',
     );
     expectProblem(
-      await api().post('/admin/schedules').send({ name: 'x.y', cron: 'every day', jobType: 'queue.maintenance' }),
+      await api().post('/v1/admin/schedules').send({ name: 'x.y', cron: 'every day', jobType: 'queue.maintenance' }),
       400,
       'VALIDATION_FAILED',
     );
@@ -129,7 +129,7 @@ describe('schedules administration', () => {
       payload: {},
     });
     scheduler.triggerSchedule.mockResolvedValue({ id: JOB_ID });
-    const res = await api().post(`/admin/schedules/${SUBSCRIPTION_ID}/run`);
+    const res = await api().post(`/v1/admin/schedules/${SUBSCRIPTION_ID}/run`);
     expect(res.status).toBe(202);
     expect(res.body.jobId).toBe(JOB_ID);
   });

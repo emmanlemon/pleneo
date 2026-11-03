@@ -45,7 +45,7 @@ services:
       # localhost is a trustworthy origin, so the Secure cookie still reaches the browser over plain HTTP
       COOKIE_SECURE: 'true'
       REQUIRE_EMAIL_VERIFICATION: 'true'
-      EVENT_WEBHOOK_URL: http://events:4200/ingest/authzero
+      EVENT_WEBHOOK_URL: http://events:4200/v1/ingest/authzero
       EVENT_WEBHOOK_SECRET: ${AUTHZERO_WEBHOOK_SECRET}
     ports:
       - '4000:4000'
@@ -128,7 +128,7 @@ services:
         'node',
         'scripts/seed-subscription.js',
         'pleneo-management',
-        'http://backend:4100/webhooks/events',
+        'http://backend:4100/v1/webhooks/events',
         'project.*,iot.*',
         '${MANAGEMENT_WEBHOOK_SECRET}',
       ]

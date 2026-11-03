@@ -13,7 +13,7 @@ function remember(jti, active, expSeconds) {
 
 async function introspect(token) {
   const basic = Buffer.from(`${config.AUTH_CLIENT_ID}:${config.AUTH_CLIENT_SECRET}`).toString('base64');
-  const res = await fetch(`${config.AUTH_INTERNAL_URL}/oauth/introspect`, {
+  const res = await fetch(`${config.AUTH_INTERNAL_URL}/v1/oauth/introspect`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Basic ${basic}` },
     body: JSON.stringify({ token }),

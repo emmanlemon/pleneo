@@ -13,7 +13,8 @@ export const globalLimiter = rateLimit({
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 3000,
-  skip: (req) => !config.RATE_LIMIT_ENABLED || req.path.startsWith('/v1/device'),
+  // The trailing slash matters: without it this also exempts /v1/devices, the operator plane.
+  skip: (req) => !config.RATE_LIMIT_ENABLED || req.path.startsWith('/v1/device/'),
 });
 export const writeLimiter = rateLimit({ ...base, windowMs: 60 * 1000, limit: 120 });
 

@@ -234,7 +234,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/auth/register': {
+      '/v1/auth/register': {
         post: operation({
           tag: 'Authentication',
           summary: 'Register an account',
@@ -245,7 +245,7 @@ export function buildOpenApiDocument() {
           responses: { 202: accepted('Registration accepted'), ...errors(400, 429) },
         }),
       },
-      '/auth/login': {
+      '/v1/auth/login': {
         post: operation({
           tag: 'Authentication',
           summary: 'Sign in with a password',
@@ -259,7 +259,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/auth/login/mfa': {
+      '/v1/auth/login/mfa': {
         post: operation({
           tag: 'Authentication',
           summary: 'Complete the MFA challenge',
@@ -269,7 +269,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Tokens', ref('TokenSet')), ...errors(400, 401, 423, 429) },
         }),
       },
-      '/auth/refresh': {
+      '/v1/auth/refresh': {
         post: operation({
           tag: 'Authentication',
           summary: 'Rotate the refresh token',
@@ -280,21 +280,21 @@ export function buildOpenApiDocument() {
           responses: { 200: json('A new token set', ref('TokenSet')), ...errors(400, 401, 403, 429) },
         }),
       },
-      '/auth/logout': {
+      '/v1/auth/logout': {
         post: operation({
           tag: 'Authentication',
           summary: 'Revoke the current session',
           responses: { 204: { description: 'Signed out' }, ...errors(401, 403) },
         }),
       },
-      '/auth/logout-all': {
+      '/v1/auth/logout-all': {
         post: operation({
           tag: 'Authentication',
           summary: 'Revoke every session for the caller',
           responses: { 204: { description: 'All sessions revoked' }, ...errors(401, 403) },
         }),
       },
-      '/auth/email/verify': {
+      '/v1/auth/email/verify': {
         post: operation({
           tag: 'Authentication',
           summary: 'Verify an email address',
@@ -303,7 +303,7 @@ export function buildOpenApiDocument() {
           responses: { 200: accepted('Email verified'), ...errors(400, 401, 429) },
         }),
       },
-      '/auth/email/resend': {
+      '/v1/auth/email/resend': {
         post: operation({
           tag: 'Authentication',
           summary: 'Resend the verification email',
@@ -313,7 +313,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/auth/password/forgot': {
+      '/v1/auth/password/forgot': {
         post: operation({
           tag: 'Password',
           summary: 'Request a password reset',
@@ -322,7 +322,7 @@ export function buildOpenApiDocument() {
           responses: { 202: accepted('Accepted whether or not the account exists'), ...errors(400, 429) },
         }),
       },
-      '/auth/password/reset': {
+      '/v1/auth/password/reset': {
         post: operation({
           tag: 'Password',
           summary: 'Reset a password with a token',
@@ -332,7 +332,7 @@ export function buildOpenApiDocument() {
           responses: { 200: accepted('Password updated'), ...errors(400, 401, 429) },
         }),
       },
-      '/auth/password/change': {
+      '/v1/auth/password/change': {
         post: operation({
           tag: 'Password',
           summary: 'Change the caller’s password',
@@ -343,7 +343,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/auth/mfa/setup': {
+      '/v1/auth/mfa/setup': {
         post: operation({
           tag: 'MFA',
           summary: 'Begin TOTP enrolment',
@@ -357,7 +357,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/auth/mfa/enable': {
+      '/v1/auth/mfa/enable': {
         post: operation({
           tag: 'MFA',
           summary: 'Confirm TOTP enrolment',
@@ -372,7 +372,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/auth/mfa/disable': {
+      '/v1/auth/mfa/disable': {
         post: operation({
           tag: 'MFA',
           summary: 'Disable MFA',
@@ -382,7 +382,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Disabled' }, ...errors(400, 401, 403, 409, 429) },
         }),
       },
-      '/auth/mfa/recovery-codes': {
+      '/v1/auth/mfa/recovery-codes': {
         post: operation({
           tag: 'MFA',
           summary: 'Regenerate recovery codes',
@@ -397,7 +397,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/auth/sessions': {
+      '/v1/auth/sessions': {
         get: operation({
           tag: 'Sessions',
           summary: 'List the caller’s active sessions',
@@ -410,7 +410,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/auth/sessions/{id}': {
+      '/v1/auth/sessions/{id}': {
         delete: operation({
           tag: 'Sessions',
           summary: 'Revoke one of the caller’s sessions',
@@ -419,7 +419,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/users/me': {
+      '/v1/users/me': {
         get: operation({
           tag: 'Profile',
           summary: 'Get the caller’s profile',
@@ -433,7 +433,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/oauth/token': {
+      '/v1/oauth/token': {
         post: operation({
           tag: 'OAuth2',
           summary: 'Client credentials grant',
@@ -483,7 +483,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/oauth/introspect': {
+      '/v1/oauth/introspect': {
         post: operation({
           tag: 'OAuth2',
           summary: 'Introspect a token',
@@ -532,7 +532,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/admin/users': {
+      '/v1/admin/users': {
         get: operation({
           tag: 'Administration',
           summary: 'List users',
@@ -551,7 +551,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/admin/users/{id}': {
+      '/v1/admin/users/{id}': {
         get: operation({
           tag: 'Administration',
           summary: 'Get a user with roles and active sessions',
@@ -568,7 +568,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Updated' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/users/{id}/unlock': {
+      '/v1/admin/users/{id}/unlock': {
         post: operation({
           tag: 'Administration',
           summary: 'Clear a lockout',
@@ -576,7 +576,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Unlocked' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/users/{id}/revoke-sessions': {
+      '/v1/admin/users/{id}/revoke-sessions': {
         post: operation({
           tag: 'Administration',
           summary: 'Revoke every session for a user',
@@ -584,7 +584,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Revoked' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/users/{id}/roles': {
+      '/v1/admin/users/{id}/roles': {
         post: operation({
           tag: 'Administration',
           summary: 'Grant a role',
@@ -594,7 +594,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Granted' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/users/{id}/roles/{role}': {
+      '/v1/admin/users/{id}/roles/{role}': {
         delete: operation({
           tag: 'Administration',
           summary: 'Revoke a role',
@@ -603,14 +603,14 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Revoked' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/roles': {
+      '/v1/admin/roles': {
         get: operation({
           tag: 'Administration',
           summary: 'List roles and their permissions',
           responses: { 200: json('Roles', { type: 'object' }), ...errors(401, 403) },
         }),
       },
-      '/admin/clients': {
+      '/v1/admin/clients': {
         get: operation({
           tag: 'Administration',
           summary: 'List OAuth2 clients',
@@ -633,7 +633,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/admin/clients/{id}': {
+      '/v1/admin/clients/{id}': {
         delete: operation({
           tag: 'Administration',
           summary: 'Revoke a client',
@@ -641,7 +641,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Revoked' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/keys': {
+      '/v1/admin/keys': {
         get: operation({
           tag: 'Administration',
           summary: 'List signing keys',
@@ -649,7 +649,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Keys', { type: 'object' }), ...errors(401, 403) },
         }),
       },
-      '/admin/keys/rotate': {
+      '/v1/admin/keys/rotate': {
         post: operation({
           tag: 'Administration',
           summary: 'Rotate the signing key',
@@ -660,7 +660,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/admin/audit': {
+      '/v1/admin/audit': {
         get: operation({
           tag: 'Administration',
           summary: 'Read the audit log',

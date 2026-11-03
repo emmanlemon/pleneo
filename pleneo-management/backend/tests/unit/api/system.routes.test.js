@@ -31,12 +31,12 @@ describe('system endpoints', () => {
   it('applies the global error contract', async () => {
     expectProblem(await api().get('/nope'), 404, 'ROUTE_NOT_FOUND');
     expectProblem(
-      await api().post('/projects').set('Content-Type', 'text/plain').send('x'),
+      await api().post('/v1/projects').set('Content-Type', 'text/plain').send('x'),
       415,
       'UNSUPPORTED_MEDIA_TYPE',
     );
     expectProblem(
-      await api().post('/projects').set('Content-Type', 'application/json').send('{bad'),
+      await api().post('/v1/projects').set('Content-Type', 'application/json').send('{bad'),
       400,
       'MALFORMED_JSON',
     );

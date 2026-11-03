@@ -9,7 +9,7 @@ Event bus, job queues, scheduler and notification dispatch for Pleneo. Postgres 
 - **Webhooks** Subscriptions match exact types, `prefix.*` or `*`. Deliveries are signed: `x-pleneo-signature: sha256=HMAC(secret, "<timestamp>.<body>")` with `x-pleneo-timestamp`, `x-pleneo-event`, `x-pleneo-event-id`, `x-pleneo-delivery`, `x-pleneo-attempt`. 4xx (except 408/425/429) is final, 410 pauses the subscription, everything else retries. Secrets are AES-256-GCM encrypted at rest.
 - **Scheduler** Cron schedules (`cron-parser`, timezone aware) enqueue jobs idempotently per slot; `POST /admin/schedules/:id/run` triggers immediately. `queue.maintenance` is seeded every 5 minutes.
 - **Email** Provider abstraction: `log` (default), `mailtrap` or `gmail`. Templates in `src/notifications/templates.js` build links from `APP_BASE_URL`.
-- **authzero ingest** `POST /ingest/authzero` verifies authzero's outbox signature (`AUTHZERO_WEBHOOK_SECRET`) and republishes as `auth.<type>` events; registration, verification, reset, lockout and MFA events become email jobs automatically.
+- **authzero ingest** `POST /v1/ingest/authzero` verifies authzero's outbox signature (`AUTHZERO_WEBHOOK_SECRET`) and republishes as `auth.<type>` events; registration, verification, reset, lockout and MFA events become email jobs automatically.
 - **Admin API** `/admin/*` (admin role or scope `events:manage`): stats, jobs (list, detail with attempts, retry, cancel), events (list, detail with deliveries), subscriptions and schedules CRUD. Consumed by the pleneo-management queue UI.
 
 ## Run locally
@@ -22,7 +22,7 @@ npm run seed:subscription -- pleneo-management http://localhost:4100/webhooks/ev
 npm run dev                     # http://localhost:4200
 ```
 
-Point authzero at this service: `EVENT_WEBHOOK_URL=http://localhost:4200/ingest/authzero` and the same `EVENT_WEBHOOK_SECRET`.
+Point authzero at this service: `EVENT_WEBHOOK_URL=http://localhost:4200/v1/ingest/authzero` and the same `EVENT_WEBHOOK_SECRET`.
 
 ## Mailtrap
 

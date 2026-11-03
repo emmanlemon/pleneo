@@ -74,7 +74,7 @@ export function createGateway(name) {
       accessToken: identity ? null : req.bff?.accessToken,
       hasBody: body !== undefined,
     });
-    const target = `${upstream.baseUrl()}${pathname}${query ? `?${query}` : ''}`;
+    const target = `${upstream.baseUrl()}${upstream.apiPrefix ?? ''}${pathname}${query ? `?${query}` : ''}`;
     const started = Date.now();
     let response = null;
     let attempts = 0;

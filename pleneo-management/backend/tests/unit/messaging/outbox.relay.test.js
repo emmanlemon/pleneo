@@ -82,7 +82,7 @@ describe('events client', () => {
     const result = await publishEvent({ type: 'project.created', payload: {}, idempotencyKey: 'k' });
     expect(result.eventId).toBe('evt');
     expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:4000/oauth/token');
+    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:4000/v1/oauth/token');
     expect(fetchMock.mock.calls[3][1].headers.authorization).toBe('Bearer t2');
     await expect(serviceToken()).resolves.toBe('t2');
     expect(fetchMock).toHaveBeenCalledTimes(4);

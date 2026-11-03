@@ -6,7 +6,7 @@ Device registry, telemetry ingestion, rules and command dispatch over MQTT and H
 
 | Plane      | Who                | Credential                                               | Surface                                                  |
 | ---------- | ------------------ | -------------------------------------------------------- | -------------------------------------------------------- |
-| Management | users and services | authzero RS256 token (JWKS verified)                     | `/devices`, `/alerts`, `/rules`, `/commands`             |
+| Management | users and services | authzero RS256 token (JWKS verified)                     | `/v1/devices`, `/v1/alerts`, `/v1/rules`, `/v1/commands`             |
 | Device     | the hardware       | `dev_<id>_<secret>` bearer token, stored as a keyed hash | `/v1/device/*` over HTTP, or MQTT on port 1883 |
 
 A device never holds a user token, and a user token can never impersonate a device. Device tokens embed the device id so a lookup is a single indexed read, and the secret is compared as a keyed HMAC, never stored in the clear.

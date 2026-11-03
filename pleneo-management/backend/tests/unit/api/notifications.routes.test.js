@@ -29,42 +29,42 @@ const notification = {
 
 beforeEach(() => asUser());
 
-describe('/notifications', () => {
+describe('/v1/notifications', () => {
   it('requires a user principal', async () => {
     anonymous();
-    expectProblem(await api().get('/notifications'), 401, 'AUTHENTICATION_REQUIRED');
+    expectProblem(await api().get('/v1/notifications'), 401, 'AUTHENTICATION_REQUIRED');
     asClient(['projects:read']);
-    expectProblem(await api().get('/notifications'), 403, 'USER_TOKEN_REQUIRED');
+    expectProblem(await api().get('/v1/notifications'), 403, 'USER_TOKEN_REQUIRED');
   });
 
   it('lists the caller’s notifications with cursor and unread filter', async () => {
     repo.listForUser.mockResolvedValue([notification]);
-    const res = await api().get('/notifications?limit=1&unread=true');
+    const res = await api().get('/v1/notifications?limit=1&unread=true');
     expect(res.status).toBe(200);
     expect(res.body.nextBefore).toBe(notification.created_at);
     expect(repo.listForUser).toHaveBeenCalledWith(USER_ID, { limit: 1, unreadOnly: true, before: undefined });
-    expectProblem(await api().get('/notifications?limit=500'), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().get('/v1/notifications?limit=500'), 400, 'VALIDATION_FAILED');
   });
 
   it('returns the unread count', async () => {
     repo.unreadCount.mockResolvedValue(3);
-    expect((await api().get('/notifications/unread-count')).body).toEqual({ count: 3 });
+    expect((await api().get('/v1/notifications/unread-count')).body).toEqual({ count: 3 });
   });
 
   it('marks one or all as read scoped to the caller', async () => {
     repo.markRead.mockResolvedValue({ ...notification, read_at: '2026-01-02T00:00:00.000Z' });
-    expect((await api().post(`/notifications/${NOTIFICATION_ID}/read`)).body.read_at).toBeTruthy();
+    expect((await api().post(`/v1/notifications/${NOTIFICATION_ID}/read`)).body.read_at).toBeTruthy();
     expect(repo.markRead).toHaveBeenCalledWith(USER_ID, NOTIFICATION_ID);
     repo.markRead.mockResolvedValue(null);
-    expectProblem(await api().post(`/notifications/${NOTIFICATION_ID}/read`), 404, 'NOT_FOUND');
+    expectProblem(await api().post(`/v1/notifications/${NOTIFICATION_ID}/read`), 404, 'NOT_FOUND');
     repo.markAllRead.mockResolvedValue(4);
-    expect((await api().post('/notifications/read-all')).body).toEqual({ updated: 4 });
+    expect((await api().post('/v1/notifications/read-all')).body).toEqual({ updated: 4 });
   });
 
   it('deletes own notifications only', async () => {
     repo.remove.mockResolvedValue(true);
-    expect((await api().delete(`/notifications/${NOTIFICATION_ID}`)).status).toBe(204);
+    expect((await api().delete(`/v1/notifications/${NOTIFICATION_ID}`)).status).toBe(204);
     repo.remove.mockResolvedValue(false);
-    expectProblem(await api().delete(`/notifications/${NOTIFICATION_ID}`), 404, 'NOT_FOUND');
+    expectProblem(await api().delete(`/v1/notifications/${NOTIFICATION_ID}`), 404, 'NOT_FOUND');
   });
 });

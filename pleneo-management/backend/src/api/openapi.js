@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { config } from '#config';
 import * as bff from '#modules/bff/bff.routes.js';
 import { testEmailSchema } from '#modules/email/email.routes.js';
-import { createProjectSchema, projectListQuery, updateProjectSchema } from '#modules/projects/projects.validators.js';
+import { createProjectSchema, PROJECT_STATUSES, projectListQuery, updateProjectSchema } from '#modules/projects/index.js';
 
 const toSchema = (zodSchema) => {
   const { $schema, ...rest } = z.toJSONSchema(zodSchema, { io: 'input', unrepresentable: 'any' });
@@ -149,11 +149,18 @@ export function buildOpenApiDocument() {
             owner_id: { type: 'string', format: 'uuid' },
             name: { type: 'string' },
             description: { type: 'string' },
-            status: { type: 'string', enum: ['planning', 'active', 'on_hold', 'completed', 'archived'] },
+            status: { type: 'string', enum: PROJECT_STATUSES },
             starts_on: { type: ['string', 'null'], format: 'date' },
             ends_on: { type: ['string', 'null'], format: 'date' },
+            created_by: { type: 'string', format: 'uuid' },
+            updated_by: { type: 'string', format: 'uuid' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
+            allowed_transitions: {
+              type: 'array',
+              description: 'Statuses this project may move to next, including its current one.',
+              items: { type: 'string', enum: PROJECT_STATUSES },
+            },
           },
         },
         Profile: {
@@ -212,7 +219,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/projects': {
+      '/v1/projects': {
         get: operation({
           tag: 'Projects',
           summary: 'List projects',
@@ -237,7 +244,7 @@ export function buildOpenApiDocument() {
           responses: { 201: json('Created', ref('Project')), ...errors(400, 401, 403) },
         }),
       },
-      '/projects/{id}': {
+      '/v1/projects/{id}': {
         get: operation({
           tag: 'Projects',
           summary: 'Get a project',
@@ -247,10 +254,11 @@ export function buildOpenApiDocument() {
         patch: operation({
           tag: 'Projects',
           summary: 'Update a project',
-          description: 'Emits `project.status_changed` when the status moves, otherwise `project.updated`.',
+          description:
+            'Emits `project.status_changed` when the status moves, otherwise `project.updated`. A status move that the lifecycle forbids is refused with 409; `allowed_transitions` on the project says which moves are open.',
           params: [pathParam('id', 'Project id')],
           body: jsonBody(updateProjectSchema),
-          responses: { 200: json('Updated', ref('Project')), ...errors(400, 401, 403, 404) },
+          responses: { 200: json('Updated', ref('Project')), ...errors(400, 401, 403, 404, 409) },
         }),
         delete: operation({
           tag: 'Projects',
@@ -261,7 +269,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/notifications': {
+      '/v1/notifications': {
         get: operation({
           tag: 'Notifications',
           summary: 'List the caller’s notifications',
@@ -282,7 +290,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/notifications/unread-count': {
+      '/v1/notifications/unread-count': {
         get: operation({
           tag: 'Notifications',
           summary: 'Unread count for the bell badge',
@@ -292,7 +300,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/notifications/read-all': {
+      '/v1/notifications/read-all': {
         post: operation({
           tag: 'Notifications',
           summary: 'Mark every notification read',
@@ -302,7 +310,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/notifications/{id}/read': {
+      '/v1/notifications/{id}/read': {
         post: operation({
           tag: 'Notifications',
           summary: 'Mark one notification read',
@@ -310,7 +318,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Updated', ref('Notification')), ...errors(400, 401, 403, 404) },
         }),
       },
-      '/notifications/{id}': {
+      '/v1/notifications/{id}': {
         delete: operation({
           tag: 'Notifications',
           summary: 'Delete one notification',
@@ -319,7 +327,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/bff/auth/login': {
+      '/v1/bff/auth/login': {
         post: operation({
           tag: 'BFF',
           summary: 'Sign in and open a browser session',
@@ -340,7 +348,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/bff/auth/login/mfa': {
+      '/v1/bff/auth/login/mfa': {
         post: operation({
           tag: 'BFF',
           summary: 'Answer the MFA challenge and open a session',
@@ -352,7 +360,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/bff/auth/session': {
+      '/v1/bff/auth/session': {
         get: operation({
           tag: 'BFF',
           summary: 'Who the session belongs to',
@@ -361,7 +369,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Current user', { type: 'object', properties: { user: ref('Profile') } }), ...errors(401, 403) },
         }),
       },
-      '/bff/auth/logout': {
+      '/v1/bff/auth/logout': {
         post: operation({
           tag: 'BFF',
           summary: 'Close the session',
@@ -370,7 +378,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Signed out' } },
         }),
       },
-      '/bff/auth/register': {
+      '/v1/bff/auth/register': {
         post: operation({
           tag: 'BFF',
           summary: 'Register an account',
@@ -379,7 +387,7 @@ export function buildOpenApiDocument() {
           responses: { 202: json('Accepted', { type: 'object' }), ...errors(400, 429) },
         }),
       },
-      '/bff/auth/email/verify': {
+      '/v1/bff/auth/email/verify': {
         post: operation({
           tag: 'BFF',
           summary: 'Verify an email address',
@@ -388,7 +396,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Verified', { type: 'object' }), ...errors(400, 401, 429) },
         }),
       },
-      '/bff/auth/email/resend': {
+      '/v1/bff/auth/email/resend': {
         post: operation({
           tag: 'BFF',
           summary: 'Resend the verification email',
@@ -397,7 +405,7 @@ export function buildOpenApiDocument() {
           responses: { 202: json('Accepted', { type: 'object' }), ...errors(400, 429) },
         }),
       },
-      '/bff/auth/password/forgot': {
+      '/v1/bff/auth/password/forgot': {
         post: operation({
           tag: 'BFF',
           summary: 'Request a password reset',
@@ -406,7 +414,7 @@ export function buildOpenApiDocument() {
           responses: { 202: json('Accepted', { type: 'object' }), ...errors(400, 429) },
         }),
       },
-      '/bff/auth/password/reset': {
+      '/v1/bff/auth/password/reset': {
         post: operation({
           tag: 'BFF',
           summary: 'Reset a password with a token',
@@ -415,7 +423,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Updated', { type: 'object' }), ...errors(400, 401, 429) },
         }),
       },
-      '/bff/auth/password/change': {
+      '/v1/bff/auth/password/change': {
         post: operation({
           tag: 'BFF',
           summary: 'Change the signed-in user’s password',
@@ -424,7 +432,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Updated', { type: 'object' }), ...errors(400, 401, 403, 429) },
         }),
       },
-      '/bff/events/{path}': {
+      '/v1/bff/events/{path}': {
         get: operation({
           tag: 'BFF',
           summary: 'Proxy a read to pleneo-events',
@@ -439,7 +447,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/bff/iot/{path}': {
+      '/v1/bff/iot/{path}': {
         get: operation({
           tag: 'BFF',
           summary: 'Proxy a read to pleneo-iot',
@@ -454,7 +462,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/admin/gateway': {
+      '/v1/admin/gateway': {
         get: operation({
           tag: 'BFF',
           summary: 'Gateway health and traffic counters',
@@ -464,7 +472,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/admin/email/test': {
+      '/v1/admin/email/test': {
         post: operation({
           tag: 'Admin',
           summary: 'Send a test email through the real pipeline',
@@ -480,7 +488,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/webhooks/events': {
+      '/v1/webhooks/events': {
         post: operation({
           tag: 'Webhooks',
           summary: 'Receive a signed platform event',

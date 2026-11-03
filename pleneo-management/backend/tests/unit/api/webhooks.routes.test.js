@@ -35,7 +35,7 @@ const envelope = {
 
 const send = (body, { secret = SECRET, timestamp = Math.floor(Date.now() / 1000) } = {}) =>
   api()
-    .post('/webhooks/events')
+    .post('/v1/webhooks/events')
     .set('x-pleneo-timestamp', String(timestamp))
     .set('x-pleneo-signature', signPayload(secret, String(timestamp), body))
     .set('Content-Type', 'application/json')
@@ -103,7 +103,7 @@ describe('POST /webhooks/events', () => {
     expectProblem(await send(raw, { timestamp: Math.floor(Date.now() / 1000) - 3600 }), 401, 'STALE_SIGNATURE');
     const ts = String(Math.floor(Date.now() / 1000));
     const tampered = await api()
-      .post('/webhooks/events')
+      .post('/v1/webhooks/events')
       .set('x-pleneo-timestamp', ts)
       .set('x-pleneo-signature', signPayload(SECRET, ts, raw))
       .set('Content-Type', 'application/json')

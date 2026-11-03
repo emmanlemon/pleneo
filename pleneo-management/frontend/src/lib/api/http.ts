@@ -30,5 +30,8 @@ function createClient(baseURL: string, timeout: number) {
   return instance;
 }
 
-export const bffHttp = createClient(`${env.bffUrl}/bff`, 15_000);
-export const apiHttp = createClient(env.bffUrl, 10_000);
+/** The API version lives here only, so call sites stay free of it. */
+export const API_VERSION = 'v1';
+
+export const bffHttp = createClient(`${env.bffUrl}/${API_VERSION}/bff`, 15_000);
+export const apiHttp = createClient(`${env.bffUrl}/${API_VERSION}`, 10_000);

@@ -10,7 +10,7 @@ export const router = Router();
 
 router.use(docsRouter);
 router.use(systemRouter);
-router.use('/events', eventsRouter);
-router.use('/jobs', jobsRouter);
-router.use('/ingest', ingestRouter);
-router.use('/admin', adminRouter);
+router.use('/v1/events', eventsRouter);
+router.use('/v1/jobs', jobsRouter);
+router.use('/v1/ingest', ingestRouter);
+router.use('/v1/admin', adminRouter);

@@ -22,14 +22,14 @@ describe('OpenAPI document', () => {
 
   it('describes both authentication planes', () => {
     expect(Object.keys(spec.components.securitySchemes)).toEqual(['bearerAuth', 'deviceToken']);
-    expect(spec.paths['/devices'].get.security).toBeUndefined();
+    expect(spec.paths['/v1/devices'].get.security).toBeUndefined();
     expect(spec.security).toEqual([{ bearerAuth: [] }]);
     expect(spec.paths['/v1/device/telemetry'].post.security).toEqual([{ deviceToken: [] }]);
     expect(spec.paths['/v1/device/activate'].post.security).toEqual([]);
   });
 
   it('derives request bodies from the zod validators', () => {
-    const register = spec.paths['/devices'].post.requestBody.content['application/json'].schema;
+    const register = spec.paths['/v1/devices'].post.requestBody.content['application/json'].schema;
     expect(register.required).toEqual(expect.arrayContaining(['externalId', 'name', 'deviceTypeId']));
     expect(register.additionalProperties).toBe(false);
     expect(register.properties.externalId.pattern).toBeDefined();

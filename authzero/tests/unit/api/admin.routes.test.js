@@ -38,44 +38,44 @@ beforeEach(() => {
 describe('admin authorization', () => {
   it('rejects anonymous, client and under-privileged principals', async () => {
     anonymous();
-    expectProblem(await api().get('/admin/users'), 401, 'AUTHENTICATION_REQUIRED');
+    expectProblem(await api().get('/v1/admin/users'), 401, 'AUTHENTICATION_REQUIRED');
     asClient(['users:read']);
-    expectProblem(await api().get('/admin/users'), 403, 'USER_TOKEN_REQUIRED');
+    expectProblem(await api().get('/v1/admin/users'), 403, 'USER_TOKEN_REQUIRED');
     asUser({ permissions: ['users:read'] });
-    expectProblem(await api().post('/admin/keys/rotate'), 403, 'INSUFFICIENT_PERMISSIONS');
+    expectProblem(await api().post('/v1/admin/keys/rotate'), 403, 'INSUFFICIENT_PERMISSIONS');
   });
 });
 
-describe('/admin/users', () => {
+describe('/v1/admin/users', () => {
   it('lists users with cursor pagination', async () => {
     users.list.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
-    const res = await api().get('/admin/users?limit=2&search=ex');
+    const res = await api().get('/v1/admin/users?limit=2&search=ex');
     expect(res.status).toBe(200);
     expect(res.body.nextCursor).toBe('b');
     expect(users.list).toHaveBeenCalledWith({ limit: 2, search: 'ex' });
   });
 
   it('validates query parameters', async () => {
-    expectProblem(await api().get('/admin/users?limit=0'), 400, 'VALIDATION_FAILED');
-    expectProblem(await api().get('/admin/users?cursor=nope'), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().get('/v1/admin/users?limit=0'), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().get('/v1/admin/users?cursor=nope'), 400, 'VALIDATION_FAILED');
   });
 
   it('returns 404 for an unknown user', async () => {
     users.findAdminView.mockResolvedValue(null);
-    expectProblem(await api().get(`/admin/users/${OTHER_USER_ID}`), 404, 'NOT_FOUND');
+    expectProblem(await api().get(`/v1/admin/users/${OTHER_USER_ID}`), 404, 'NOT_FOUND');
   });
 
   it('returns the user with authorization and sessions', async () => {
     users.findAdminView.mockResolvedValue({ id: OTHER_USER_ID });
     roles.getAuthorization.mockResolvedValue({ roles: ['user'], permissions: [] });
     sessions.listActiveForUser.mockResolvedValue([]);
-    const res = await api().get(`/admin/users/${OTHER_USER_ID}`);
+    const res = await api().get(`/v1/admin/users/${OTHER_USER_ID}`);
     expect(res.body).toMatchObject({ id: OTHER_USER_ID, roles: ['user'], sessions: [] });
   });
 
   it('prevents an admin from disabling themselves', async () => {
     expectProblem(
-      await api().patch(`/admin/users/${USER_ID}`).send({ status: 'disabled' }),
+      await api().patch(`/v1/admin/users/${USER_ID}`).send({ status: 'disabled' }),
       403,
       'SELF_MODIFICATION_FORBIDDEN',
     );
@@ -84,7 +84,7 @@ describe('/admin/users', () => {
 
   it('disables a user and revokes their sessions', async () => {
     security.setStatus.mockResolvedValue();
-    const res = await api().patch(`/admin/users/${OTHER_USER_ID}`).send({ status: 'disabled' });
+    const res = await api().patch(`/v1/admin/users/${OTHER_USER_ID}`).send({ status: 'disabled' });
     expect(res.status).toBe(204);
     expect(sessions.revokeAllForUser).toHaveBeenCalledWith(OTHER_USER_ID, 'disabled_by_admin');
     expect(auditService.audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'admin.user_status_changed' }));
@@ -92,7 +92,7 @@ describe('/admin/users', () => {
 
   it('rejects an unknown status value', async () => {
     expectProblem(
-      await api().patch(`/admin/users/${OTHER_USER_ID}`).send({ status: 'banned' }),
+      await api().patch(`/v1/admin/users/${OTHER_USER_ID}`).send({ status: 'banned' }),
       400,
       'VALIDATION_FAILED',
     );
@@ -100,17 +100,17 @@ describe('/admin/users', () => {
 
   it('grants a role only when it exists and invalidates sessions', async () => {
     roles.exists.mockResolvedValue(false);
-    expectProblem(await api().post(`/admin/users/${OTHER_USER_ID}/roles`).send({ role: 'ghost' }), 404, 'NOT_FOUND');
+    expectProblem(await api().post(`/v1/admin/users/${OTHER_USER_ID}/roles`).send({ role: 'ghost' }), 404, 'NOT_FOUND');
     roles.exists.mockResolvedValue(true);
     roles.assign.mockResolvedValue();
-    const res = await api().post(`/admin/users/${OTHER_USER_ID}/roles`).send({ role: 'admin' });
+    const res = await api().post(`/v1/admin/users/${OTHER_USER_ID}/roles`).send({ role: 'admin' });
     expect(res.status).toBe(204);
     expect(roles.assign).toHaveBeenCalledWith(OTHER_USER_ID, 'admin', USER_ID);
     expect(sessions.revokeAllForUser).toHaveBeenCalledWith(OTHER_USER_ID, 'roles_changed');
   });
 
   it('prevents removing own admin role', async () => {
-    expectProblem(await api().delete(`/admin/users/${USER_ID}/roles/admin`), 403, 'SELF_MODIFICATION_FORBIDDEN');
+    expectProblem(await api().delete(`/v1/admin/users/${USER_ID}/roles/admin`), 403, 'SELF_MODIFICATION_FORBIDDEN');
   });
 });
 
@@ -118,7 +118,7 @@ describe('/admin platform', () => {
   it('creates a client and returns the secret once', async () => {
     clientService.createClient.mockResolvedValue({ id: 'c1', client_id: 'cid_x', clientSecret: 'sec' });
     const res = await api()
-      .post('/admin/clients')
+      .post('/v1/admin/clients')
       .send({ name: 'billing', scopes: ['billing:read'] });
     expect(res.status).toBe(201);
     expect(res.body.clientSecret).toBe('sec');
@@ -127,7 +127,7 @@ describe('/admin platform', () => {
   it('rejects malformed scopes', async () => {
     expectProblem(
       await api()
-        .post('/admin/clients')
+        .post('/v1/admin/clients')
         .send({ name: 'x', scopes: ['Bad Scope'] }),
       400,
       'VALIDATION_FAILED',
@@ -136,7 +136,7 @@ describe('/admin platform', () => {
 
   it('rotates signing keys and audits it', async () => {
     keys.rotateSigningKey.mockResolvedValue('kid-new');
-    const res = await api().post('/admin/keys/rotate');
+    const res = await api().post('/v1/admin/keys/rotate');
     expect(res.status).toBe(201);
     expect(res.body.kid).toBe('kid-new');
     expect(auditService.audit).toHaveBeenCalledWith(
@@ -146,7 +146,7 @@ describe('/admin platform', () => {
 
   it('pages the audit log', async () => {
     auditService.listAudit.mockResolvedValue([{ id: 10 }, { id: 9 }]);
-    const res = await api().get('/admin/audit?limit=2&action=auth.login');
+    const res = await api().get('/v1/admin/audit?limit=2&action=auth.login');
     expect(res.body.nextBefore).toBe(9);
     expect(auditService.listAudit).toHaveBeenCalledWith({ limit: 2, action: 'auth.login' });
   });

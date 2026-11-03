@@ -1,4 +1,11 @@
-import { AppError, BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from './app-error.js';
+import {
+  AppError,
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from './app-error.js';
 
 export const DomainErrors = {
   missingToken: () => new UnauthorizedError('Authentication required', 'AUTHENTICATION_REQUIRED'),
@@ -14,6 +21,11 @@ export const DomainErrors = {
   malformedJson: () => new BadRequestError('Malformed JSON body', 'MALFORMED_JSON'),
   invalidReference: () => new BadRequestError('Referenced resource does not exist', 'INVALID_REFERENCE'),
   invalidDateRange: () => new BadRequestError('End date must not be before start date', 'INVALID_DATE_RANGE'),
+  invalidStatus: (status) => new BadRequestError(`Unknown status "${status}"`, 'INVALID_STATUS'),
+  invalidStatusTransition: (from, to) =>
+    new ConflictError(`A project cannot move from ${from} to ${to}`, 'INVALID_STATUS_TRANSITION'),
+  noChanges: () => new BadRequestError('At least one field must be provided', 'NO_CHANGES'),
+  ownerRequired: () => new ForbiddenError('An owner must be named for this project', 'OWNER_REQUIRED'),
 
   invalidSignature: () => new UnauthorizedError('Invalid webhook signature', 'INVALID_SIGNATURE'),
   staleSignature: () => new UnauthorizedError('Webhook timestamp outside tolerance', 'STALE_SIGNATURE'),

@@ -195,7 +195,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/events': {
+      '/v1/events': {
         post: operation({
           tag: 'Events',
           summary: 'Publish an event',
@@ -217,7 +217,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/jobs': {
+      '/v1/jobs': {
         post: operation({
           tag: 'Jobs',
           summary: 'Enqueue a job',
@@ -239,7 +239,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/ingest/authzero': {
+      '/v1/ingest/authzero': {
         post: operation({
           tag: 'Ingest',
           summary: 'Receive the authzero outbox webhook',
@@ -271,7 +271,7 @@ export function buildOpenApiDocument() {
         }),
       },
 
-      '/admin/stats': {
+      '/v1/admin/stats': {
         get: operation({
           tag: 'Operations',
           summary: 'Queue depths, throughput and registered handlers',
@@ -279,7 +279,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Statistics', { type: 'object' }), ...errors(401, 403) },
         }),
       },
-      '/admin/jobs': {
+      '/v1/admin/jobs': {
         get: operation({
           tag: 'Operations',
           summary: 'List jobs',
@@ -299,7 +299,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/admin/jobs/{id}': {
+      '/v1/admin/jobs/{id}': {
         get: operation({
           tag: 'Operations',
           summary: 'Get a job with its attempt history',
@@ -307,7 +307,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Job', ref('Job')), ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/jobs/{id}/retry': {
+      '/v1/admin/jobs/{id}/retry': {
         post: operation({
           tag: 'Operations',
           summary: 'Retry a dead or failed job',
@@ -316,7 +316,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Requeued', ref('Job')), ...errors(400, 401, 403, 404, 409) },
         }),
       },
-      '/admin/jobs/{id}/cancel': {
+      '/v1/admin/jobs/{id}/cancel': {
         post: operation({
           tag: 'Operations',
           summary: 'Cancel a pending job',
@@ -324,7 +324,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Cancelled', ref('Job')), ...errors(400, 401, 403, 404, 409) },
         }),
       },
-      '/admin/events': {
+      '/v1/admin/events': {
         get: operation({
           tag: 'Operations',
           summary: 'List recent events',
@@ -345,7 +345,7 @@ export function buildOpenApiDocument() {
           },
         }),
       },
-      '/admin/events/{id}': {
+      '/v1/admin/events/{id}': {
         get: operation({
           tag: 'Operations',
           summary: 'Get an event and its delivery attempts',
@@ -353,7 +353,7 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Event with deliveries', ref('Event')), ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/subscriptions': {
+      '/v1/admin/subscriptions': {
         get: operation({
           tag: 'Operations',
           summary: 'List webhook subscriptions',
@@ -391,7 +391,7 @@ export function buildOpenApiDocument() {
           responses: { 201: json('Created', ref('Subscription')), ...errors(400, 401, 403, 409) },
         }),
       },
-      '/admin/subscriptions/{id}': {
+      '/v1/admin/subscriptions/{id}': {
         patch: operation({
           tag: 'Operations',
           summary: 'Update or pause a subscription',
@@ -423,7 +423,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Deleted' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/schedules': {
+      '/v1/admin/schedules': {
         get: operation({
           tag: 'Operations',
           summary: 'List cron schedules',
@@ -464,7 +464,7 @@ export function buildOpenApiDocument() {
           responses: { 201: json('Created', ref('Schedule')), ...errors(400, 401, 403) },
         }),
       },
-      '/admin/schedules/{id}': {
+      '/v1/admin/schedules/{id}': {
         patch: operation({
           tag: 'Operations',
           summary: 'Update, pause or resume a schedule',
@@ -498,7 +498,7 @@ export function buildOpenApiDocument() {
           responses: { 204: { description: 'Deleted' }, ...errors(400, 401, 403, 404) },
         }),
       },
-      '/admin/schedules/{id}/run': {
+      '/v1/admin/schedules/{id}/run': {
         post: operation({
           tag: 'Operations',
           summary: 'Run a schedule now',

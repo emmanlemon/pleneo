@@ -11,7 +11,7 @@ import { globalLimiter } from '#common/middleware/rate-limit.js';
 import { enforceJsonContentType, noCache, requestId } from '#common/middleware/security.js';
 import { router } from './api/router.js';
 
-const FORM_ENCODED_PREFIXES = ['/oauth/'];
+const FORM_ENCODED_PREFIXES = ['/v1/oauth/'];
 
 const httpLogger = () =>
   pinoHttp({

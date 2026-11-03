@@ -49,7 +49,7 @@ describe('signature primitives', () => {
 describe('POST /ingest/authzero', () => {
   it('accepts a correctly signed envelope and republishes it as an auth event', async () => {
     const { body, headers } = signed(JSON.stringify(envelope));
-    const res = await api().post('/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(body);
+    const res = await api().post('/v1/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(body);
     expect(res.status).toBe(202);
     expect(events.publish).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -65,7 +65,7 @@ describe('POST /ingest/authzero', () => {
     events.publish.mockResolvedValue({ event: { id: EVENT_ID }, duplicate: true, deliveries: 0 });
     const { body, headers } = signed(JSON.stringify(envelope));
     expect(
-      (await api().post('/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(body)).status,
+      (await api().post('/v1/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(body)).status,
     ).toBe(200);
   });
 
@@ -73,20 +73,20 @@ describe('POST /ingest/authzero', () => {
     const raw = JSON.stringify(envelope);
     const bad = signed(raw, { secret: 'x'.repeat(32) });
     expectProblem(
-      await api().post('/ingest/authzero').set(bad.headers).set('Content-Type', 'application/json').send(raw),
+      await api().post('/v1/ingest/authzero').set(bad.headers).set('Content-Type', 'application/json').send(raw),
       401,
       'INVALID_SIGNATURE',
     );
     const stale = signed(raw, { timestamp: Math.floor(Date.now() / 1000) - 3600 });
     expectProblem(
-      await api().post('/ingest/authzero').set(stale.headers).set('Content-Type', 'application/json').send(raw),
+      await api().post('/v1/ingest/authzero').set(stale.headers).set('Content-Type', 'application/json').send(raw),
       401,
       'STALE_SIGNATURE',
     );
     const { headers } = signed(raw);
     const tampered = JSON.stringify({ ...envelope, type: 'user.admin_granted' });
     expectProblem(
-      await api().post('/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(tampered),
+      await api().post('/v1/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(tampered),
       401,
       'INVALID_SIGNATURE',
     );
@@ -96,7 +96,7 @@ describe('POST /ingest/authzero', () => {
   it('validates the envelope after the signature passes', async () => {
     const { body, headers } = signed(JSON.stringify({ id: 1, type: 'BAD TYPE' }));
     expectProblem(
-      await api().post('/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(body),
+      await api().post('/v1/ingest/authzero').set(headers).set('Content-Type', 'application/json').send(body),
       400,
       'VALIDATION_FAILED',
     );

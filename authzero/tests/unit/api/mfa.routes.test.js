@@ -20,43 +20,43 @@ const { DomainErrors } = await import('#common/errors/domain-errors.js');
 
 beforeEach(() => asUser());
 
-describe('/auth/mfa', () => {
+describe('/v1/auth/mfa', () => {
   it('requires a user principal', async () => {
     anonymous();
-    expectProblem(await api().post('/auth/mfa/setup'), 401, 'AUTHENTICATION_REQUIRED');
+    expectProblem(await api().post('/v1/auth/mfa/setup'), 401, 'AUTHENTICATION_REQUIRED');
     asClient();
-    expectProblem(await api().post('/auth/mfa/setup'), 403, 'USER_TOKEN_REQUIRED');
+    expectProblem(await api().post('/v1/auth/mfa/setup'), 403, 'USER_TOKEN_REQUIRED');
   });
 
   it('starts setup and returns the provisioning secret', async () => {
     mfa.setup.mockResolvedValue({ secret: 'S', otpauthUrl: 'otpauth://totp/x' });
-    const res = await api().post('/auth/mfa/setup');
+    const res = await api().post('/v1/auth/mfa/setup');
     expect(res.status).toBe(200);
     expect(res.body.otpauthUrl).toMatch(/^otpauth:/);
     expect(mfa.setup).toHaveBeenCalledWith(expect.objectContaining({ userId: USER_ID }), expect.any(Object));
   });
 
   it('rejects a non six-digit enable code before reaching the service', async () => {
-    expectProblem(await api().post('/auth/mfa/enable').send({ code: 'abcdef' }), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().post('/v1/auth/mfa/enable').send({ code: 'abcdef' }), 400, 'VALIDATION_FAILED');
     expect(mfa.enable).not.toHaveBeenCalled();
   });
 
   it('enables and returns recovery codes', async () => {
     mfa.enable.mockResolvedValue({ recoveryCodes: Array(10).fill('abcde-fghij') });
-    const res = await api().post('/auth/mfa/enable').send({ code: '123456' });
+    const res = await api().post('/v1/auth/mfa/enable').send({ code: '123456' });
     expect(res.status).toBe(200);
     expect(res.body.recoveryCodes).toHaveLength(10);
   });
 
   it('maps a conflict when MFA is already enabled', async () => {
     mfa.enable.mockRejectedValue(DomainErrors.mfaAlreadyEnabled());
-    expectProblem(await api().post('/auth/mfa/enable').send({ code: '123456' }), 409, 'MFA_ALREADY_ENABLED');
+    expectProblem(await api().post('/v1/auth/mfa/enable').send({ code: '123456' }), 409, 'MFA_ALREADY_ENABLED');
   });
 
   it('disable requires password and accepts a recovery code', async () => {
-    expectProblem(await api().post('/auth/mfa/disable').send({ code: '123456' }), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().post('/v1/auth/mfa/disable').send({ code: '123456' }), 400, 'VALIDATION_FAILED');
     mfa.disable.mockResolvedValue();
-    const res = await api().post('/auth/mfa/disable').send({ password: 'pw', code: 'ABCDE-12345' });
+    const res = await api().post('/v1/auth/mfa/disable').send({ password: 'pw', code: 'ABCDE-12345' });
     expect(res.status).toBe(204);
     expect(mfa.disable).toHaveBeenCalledWith(
       expect.anything(),
@@ -67,7 +67,7 @@ describe('/auth/mfa', () => {
 
   it('regenerates recovery codes after re-authentication', async () => {
     mfa.regenerateRecoveryCodes.mockResolvedValue({ recoveryCodes: ['a-b'] });
-    const res = await api().post('/auth/mfa/recovery-codes').send({ password: 'pw' });
+    const res = await api().post('/v1/auth/mfa/recovery-codes').send({ password: 'pw' });
     expect(res.status).toBe(200);
   });
 });

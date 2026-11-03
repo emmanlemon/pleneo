@@ -53,12 +53,12 @@ describe('global request hygiene', () => {
   });
 
   it('rejects non-JSON bodies on mutating routes', async () => {
-    const res = await api().post('/auth/login').set('Content-Type', 'text/plain').send('email=x');
+    const res = await api().post('/v1/auth/login').set('Content-Type', 'text/plain').send('email=x');
     expectProblem(res, 415, 'UNSUPPORTED_MEDIA_TYPE');
   });
 
   it('rejects malformed JSON', async () => {
-    const res = await api().post('/auth/login').set('Content-Type', 'application/json').send('{bad');
+    const res = await api().post('/v1/auth/login').set('Content-Type', 'application/json').send('{bad');
     expectProblem(res, 400, 'MALFORMED_JSON');
   });
 

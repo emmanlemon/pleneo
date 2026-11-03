@@ -95,19 +95,19 @@ async function main() {
   const deviceSecretKey = /^[0-9a-f]{64}$/i.test(iotEnv.DEVICE_SECRET_KEY ?? '') ? iotEnv.DEVICE_SECRET_KEY : hex(32);
 
   process.stdout.write(`Signing in to authzero as ${ADMIN_EMAIL}\n`);
-  const login = await json(`${AUTH_URL}/auth/login`, {
+  const login = await json(`${AUTH_URL}/v1/auth/login`, {
     method: 'POST',
     body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
-  if (login.mfaRequired) fail('Admin account has MFA enabled; create the client manually via POST /admin/clients.');
+  if (login.mfaRequired) fail('Admin account has MFA enabled; create the client manually via POST /v1/admin/clients.');
   const admin = login.accessToken;
 
-  const { clients } = await json(`${AUTH_URL}/admin/clients`, { token: admin });
+  const { clients } = await json(`${AUTH_URL}/v1/admin/clients`, { token: admin });
   const createClient = async (name, scopes) => {
     for (const existing of clients.filter((c) => c.name === name && c.status === 'active')) {
-      await json(`${AUTH_URL}/admin/clients/${existing.id}`, { method: 'DELETE', token: admin }).catch(() => undefined);
+      await json(`${AUTH_URL}/v1/admin/clients/${existing.id}`, { method: 'DELETE', token: admin }).catch(() => undefined);
     }
-    const created = await json(`${AUTH_URL}/admin/clients`, { method: 'POST', token: admin, body: { name, scopes } });
+    const created = await json(`${AUTH_URL}/v1/admin/clients`, { method: 'POST', token: admin, body: { name, scopes } });
     process.stdout.write(`Created authzero client ${created.client_id} (${name})\n`);
     return created;
   };
@@ -116,7 +116,7 @@ async function main() {
   const iotClient = await createClient('pleneo-iot', ['events:publish']);
 
   upsertEnv(files.authzero, {
-    EVENT_WEBHOOK_URL: `${EVENTS_URL}/ingest/authzero`,
+    EVENT_WEBHOOK_URL: `${EVENTS_URL}/v1/ingest/authzero`,
     EVENT_WEBHOOK_SECRET: authzeroWebhookSecret,
   });
   upsertEnv(files.events, {
@@ -165,7 +165,7 @@ async function main() {
     [
       'scripts/seed-subscription.js',
       'pleneo-management',
-      `${API_URL}/webhooks/events`,
+      `${API_URL}/v1/webhooks/events`,
       'project.*,iot.*',
       managementWebhookSecret,
     ],
@@ -179,9 +179,9 @@ async function main() {
     [
       '',
       'Connected:',
-      `  authzero  -> ${EVENTS_URL}/ingest/authzero (signed outbox webhook)`,
+      `  authzero  -> ${EVENTS_URL}/v1/ingest/authzero (signed outbox webhook)`,
       `  backend   -> ${EVENTS_URL} via client ${client.client_id} (outbox relay + email jobs)`,
-      `  events    -> ${API_URL}/webhooks/events (subscription pleneo-management, project.* and iot.*)`,
+      `  events    -> ${API_URL}/v1/webhooks/events (subscription pleneo-management, project.* and iot.*)`,
       `  iot       -> ${EVENTS_URL} via client ${iotClient.client_id} (device, alert and lifecycle events)`,
       '',
       'Restart authzero, the management backend and pleneo-iot so they pick up the new .env values.',

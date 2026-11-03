@@ -19,15 +19,15 @@ const users = await import('#modules/users/user.repository.js');
 
 beforeEach(() => asUser({ roles: ['user'], permissions: ['x:y'] }));
 
-describe('/users/me', () => {
+describe('/v1/users/me', () => {
   it('requires authentication', async () => {
     anonymous();
-    expectProblem(await api().get('/users/me'), 401, 'AUTHENTICATION_REQUIRED');
+    expectProblem(await api().get('/v1/users/me'), 401, 'AUTHENTICATION_REQUIRED');
   });
 
   it('returns the profile merged with token authorization claims', async () => {
     users.findPublicById.mockResolvedValue({ id: USER_ID, email: 'user@example.com', name: 'U' });
-    const res = await api().get('/users/me');
+    const res = await api().get('/v1/users/me');
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ id: USER_ID, roles: ['user'], permissions: ['x:y'] });
     expect(res.body.password_hash).toBeUndefined();
@@ -35,17 +35,17 @@ describe('/users/me', () => {
 
   it('returns 404 when the user no longer exists', async () => {
     users.findPublicById.mockResolvedValue(null);
-    expectProblem(await api().get('/users/me'), 404, 'NOT_FOUND');
+    expectProblem(await api().get('/v1/users/me'), 404, 'NOT_FOUND');
   });
 
   it('rejects unknown profile fields', async () => {
-    expectProblem(await api().patch('/users/me').send({ email: 'x@y.z' }), 400, 'VALIDATION_FAILED');
+    expectProblem(await api().patch('/v1/users/me').send({ email: 'x@y.z' }), 400, 'VALIDATION_FAILED');
     expect(users.updateProfile).not.toHaveBeenCalled();
   });
 
   it('updates the display name', async () => {
     users.updateProfile.mockResolvedValue({ id: USER_ID, name: 'Renamed' });
-    const res = await api().patch('/users/me').send({ name: '  Renamed ' });
+    const res = await api().patch('/v1/users/me').send({ name: '  Renamed ' });
     expect(res.status).toBe(200);
     expect(users.updateProfile).toHaveBeenCalledWith(USER_ID, { name: 'Renamed' });
   });

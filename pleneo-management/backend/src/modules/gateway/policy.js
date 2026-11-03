@@ -47,9 +47,14 @@ const iotRoutes = [
   route('GET', '/rules'),
 ];
 
+/**
+ * `routes` are console-facing paths, the part after `/v1/bff/<name>`. `apiPrefix` is the
+ * upstream's own API version, added when the target URL is built, so the console's paths
+ * stay stable when an upstream version moves.
+ */
 export const UPSTREAMS = {
-  events: { audience: 'pleneo-events', baseUrl: () => config.EVENTS_URL, routes: eventsRoutes },
-  iot: { audience: 'pleneo-iot', baseUrl: () => config.IOT_URL, routes: iotRoutes },
+  events: { audience: 'pleneo-events', baseUrl: () => config.EVENTS_URL, apiPrefix: '/v1', routes: eventsRoutes },
+  iot: { audience: 'pleneo-iot', baseUrl: () => config.IOT_URL, apiPrefix: '/v1', routes: iotRoutes },
 };
 
 const matches = (pattern, actual) =>

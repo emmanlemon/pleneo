@@ -4,7 +4,7 @@ const options = () => ({
   httpOnly: true,
   secure: config.COOKIE_SECURE,
   sameSite: 'strict',
-  path: '/auth',
+  path: '/v1/auth',
   domain: config.COOKIE_DOMAIN,
 });
 

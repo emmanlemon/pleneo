@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import * as r from '#common/validation/rules.js';
 import { body, params, query } from '#common/validation/validator.js';
+import { PROJECT_STATUSES } from '../domain/project-status.js';
 
-export const PROJECT_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'archived'];
 const status = z.enum(PROJECT_STATUSES);
 
 export const projectListQuery = r

@@ -13,7 +13,7 @@ export class EventsClientError extends Error {
 
 async function requestToken() {
   const basic = Buffer.from(`${config.EVENTS_CLIENT_ID}:${config.EVENTS_CLIENT_SECRET}`).toString('base64');
-  const res = await fetch(`${config.AUTH_INTERNAL_URL}/oauth/token`, {
+  const res = await fetch(`${config.AUTH_INTERNAL_URL}/v1/oauth/token`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Basic ${basic}` },
     body: JSON.stringify({ grant_type: 'client_credentials' }),
@@ -50,7 +50,7 @@ async function post(path, body, retryOnUnauthorized = true) {
 }
 
 export const publishEvent = ({ type, payload, idempotencyKey, occurredAt, correlationId }) =>
-  post('/events', { type, payload, idempotencyKey, occurredAt, correlationId });
+  post('/v1/events', { type, payload, idempotencyKey, occurredAt, correlationId });
 
 export const enqueueJob = ({ type, queue = 'default', payload, runAt, idempotencyKey, priority }) =>
-  post('/jobs', { type, queue, payload, runAt, idempotencyKey, priority });
+  post('/v1/jobs', { type, queue, payload, runAt, idempotencyKey, priority });
