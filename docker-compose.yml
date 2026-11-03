@@ -1,0 +1,209 @@
+name: planeo
+
+x-db: &db
+  POSTGRES_HOST: postgres
+  DATABASE_SSL: 'false'
+
+x-auth: &auth
+  AUTH_ISSUER: http://localhost:4000
+  AUTH_JWKS_URL: http://authzero:4000/.well-known/jwks.json
+  AUTH_INTERNAL_URL: http://authzero:4000
+  AUTH_AUDIENCE: planeo
+  INTERNAL_IDENTITY_KEY: ${INTERNAL_IDENTITY_KEY}
+  INTERNAL_IDENTITY_ISSUER: planeo-gateway
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: planeo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: authzero
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-databases.sql:ro
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U planeo -d authzero']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  authzero:
+    build: ./authzero
+    environment:
+      <<: *db
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4000
+      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/authzero
+      KEY_ENCRYPTION_KEY: ${AUTHZERO_KEK}
+      JWT_ISSUER: http://localhost:4000
+      JWT_AUDIENCE: planeo
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+      # localhost is a trustworthy origin, so the Secure cookie still reaches the browser over plain HTTP
+      COOKIE_SECURE: 'true'
+      REQUIRE_EMAIL_VERIFICATION: 'true'
+      EVENT_WEBHOOK_URL: http://events:4200/ingest/authzero
+      EVENT_WEBHOOK_SECRET: ${AUTHZERO_WEBHOOK_SECRET}
+    ports:
+      - '4000:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+  authzero-seed:
+    build: ./authzero
+    environment:
+      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/authzero
+      KEY_ENCRYPTION_KEY: ${AUTHZERO_KEK}
+      JWT_ISSUER: http://localhost:4000
+      JWT_AUDIENCE: planeo
+      COOKIE_SECURE: 'true'
+      LOG_LEVEL: info
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      MGMT_CLIENT_ID: ${MGMT_CLIENT_ID}
+      MGMT_CLIENT_SECRET: ${MGMT_CLIENT_SECRET}
+      IOT_CLIENT_ID: ${IOT_CLIENT_ID}
+      IOT_CLIENT_SECRET: ${IOT_CLIENT_SECRET}
+    depends_on:
+      authzero:
+        condition: service_healthy
+    restart: 'no'
+    command:
+      - sh
+      - -c
+      - >-
+        node scripts/seed-admin.js "$$ADMIN_EMAIL" "$$ADMIN_PASSWORD" && node scripts/seed-client.js
+        planeo-management-backend "$$MGMT_CLIENT_ID" "$$MGMT_CLIENT_SECRET"
+        events:publish,jobs:enqueue,projects:read && node scripts/seed-client.js planeo-iot
+        "$$IOT_CLIENT_ID" "$$IOT_CLIENT_SECRET" events:publish
+
+  events:
+    build: ./planeo-events
+    environment:
+      <<: [*db, *auth]
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4200
+      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo_events
+      AUTHZERO_WEBHOOK_SECRET: ${AUTHZERO_WEBHOOK_SECRET}
+      SECRETS_ENCRYPTION_KEY: ${EVENTS_SECRETS_KEY}
+      APP_BASE_URL: http://localhost:3000
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-log}
+      EMAIL_FROM: ${EMAIL_FROM:-Planeo <no-reply@planeo.local>}
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+      MAILTRAP_API_KEY: ${MAILTRAP_API_KEY:-}
+      MAILTRAP_INBOX_ID: ${MAILTRAP_INBOX_ID:-}
+      NODE_EXTRA_CA_CERTS: ${NODE_EXTRA_CA_CERTS:-}
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+    ports:
+      - '4200:4200'
+    volumes:
+      - ./docker/ca:/etc/planeo-ca:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+  events-seed:
+    build: ./planeo-events
+    environment:
+      <<: [*db, *auth]
+      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo_events
+      AUTHZERO_WEBHOOK_SECRET: ${AUTHZERO_WEBHOOK_SECRET}
+      SECRETS_ENCRYPTION_KEY: ${EVENTS_SECRETS_KEY}
+      APP_BASE_URL: http://localhost:3000
+      EMAIL_FROM: ${EMAIL_FROM:-Planeo <no-reply@planeo.local>}
+    depends_on:
+      events:
+        condition: service_healthy
+    restart: 'no'
+    command:
+      [
+        'node',
+        'scripts/seed-subscription.js',
+        'planeo-management',
+        'http://backend:4100/webhooks/events',
+        'project.*,iot.*',
+        '${MANAGEMENT_WEBHOOK_SECRET}',
+      ]
+
+  backend:
+    build:
+      context: ./planeo-management
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: [*db, *auth]
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4100
+      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo
+      EVENTS_URL: http://events:4200
+      EVENTS_CLIENT_ID: ${MGMT_CLIENT_ID}
+      EVENTS_CLIENT_SECRET: ${MGMT_CLIENT_SECRET}
+      EVENTS_WEBHOOK_SECRET: ${MANAGEMENT_WEBHOOK_SECRET}
+      IOT_URL: http://iot:4300
+      BFF_ENABLED: 'true'
+      BFF_SESSION_KEY: ${BFF_SESSION_KEY}
+      BFF_COOKIE_SECURE: 'true'
+      OUTBOX_ENABLED: 'true'
+      NOTIFY_EMAIL_ENABLED: ${NOTIFY_EMAIL_ENABLED:-false}
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - '4100:4100'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      authzero-seed:
+        condition: service_completed_successfully
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+  iot:
+    build: ./planeo-iot
+    environment:
+      <<: [*db, *auth]
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4300
+      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo_iot
+      DEVICE_SECRET_KEY: ${IOT_DEVICE_SECRET_KEY}
+      EVENTS_URL: http://events:4200
+      EVENTS_CLIENT_ID: ${IOT_CLIENT_ID}
+      EVENTS_CLIENT_SECRET: ${IOT_CLIENT_SECRET}
+      OUTBOX_ENABLED: 'true'
+      DEVICE_OFFLINE_AFTER_SECONDS: ${DEVICE_OFFLINE_AFTER_SECONDS:-120}
+      MQTT_ENABLED: ${MQTT_ENABLED:-true}
+      MQTT_PORT: 1883
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+    ports:
+      - '4300:4300'
+      - '1883:1883'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      authzero-seed:
+        condition: service_completed_successfully
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+  frontend:
+    build:
+      context: ./planeo-management
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_BFF_URL: http://localhost:4100
+    ports:
+      - '3000:3000'
+    depends_on:
+      backend:
+        condition: service_started
+      iot:
+        condition: service_started
+
+volumes:
+  pgdata:

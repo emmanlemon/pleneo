@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: authzero
+      POSTGRES_PASSWORD: authzero
+      POSTGRES_DB: authzero
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authzero -d authzero"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  authzero:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://authzero:authzero@postgres:5432/authzero
+      HOST: 0.0.0.0
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+volumes:
+  pgdata:

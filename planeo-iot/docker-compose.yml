@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: planeo_iot
+      POSTGRES_PASSWORD: planeo_iot
+      POSTGRES_DB: planeo_iot
+    ports:
+      - '5435:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U planeo_iot -d planeo_iot']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  iot:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://planeo_iot:planeo_iot@postgres:5432/planeo_iot
+      HOST: 0.0.0.0
+    ports:
+      - '4300:4300'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+volumes:
+  pgdata:

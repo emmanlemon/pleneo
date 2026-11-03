@@ -1,0 +1,3 @@
+CREATE DATABASE planeo;
+CREATE DATABASE planeo_events;
+CREATE DATABASE planeo_iot;

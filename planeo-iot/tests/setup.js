@@ -1,0 +1,14 @@
+process.env.NODE_ENV = 'test';
+process.env.LOG_LEVEL = 'silent';
+process.env.RATE_LIMIT_ENABLED = 'false';
+process.env.OUTBOX_ENABLED = 'false';
+process.env.DATABASE_URL ??= 'postgres://authzero:authzero@localhost:5432/planeo_iot';
+process.env.AUTH_ISSUER ??= 'http://localhost:4000';
+process.env.AUTH_AUDIENCE ??= 'planeo';
+process.env.DEVICE_SECRET_KEY = 'a3f1c9e2b7d4085f6e1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70';
+process.env.INGEST_MAX_BATCH = '500';
+process.env.INGEST_MAX_SKEW_MINUTES = '60';
+process.env.INGEST_MAX_BACKFILL_DAYS = '30';
+process.env.DEVICE_OFFLINE_AFTER_SECONDS = '120';
+process.env.INTERNAL_IDENTITY_KEY = '9f3c1a7e5d2b8406c9e7a5f3d1b9074e2c6a8d0f4b2e6a8c0d2f4b6a8c0e2d46';
+process.env.INTERNAL_IDENTITY_AUDIENCE = 'planeo-iot';

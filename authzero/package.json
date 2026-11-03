@@ -1,0 +1,52 @@
+{
+  "name": "authzero",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authentication and authorization microservice",
+  "engines": {
+    "node": ">=20"
+  },
+  "imports": {
+    "#config": "./src/config/index.js",
+    "#common/*": "./src/common/*",
+    "#infra/*": "./src/infrastructure/*",
+    "#modules/*": "./src/modules/*"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js | pino-pretty",
+    "migrate": "node src/infrastructure/database/migrate.js",
+    "seed:admin": "node scripts/seed-admin.js",
+    "keys:rotate": "node scripts/rotate-keys.js",
+    "keys:generate-kek": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+    "test": "vitest run --dir tests/unit",
+    "test:watch": "vitest --dir tests/unit",
+    "test:coverage": "vitest run --dir tests/unit --coverage",
+    "test:e2e": "vitest run --dir tests/e2e",
+    "seed:client": "node scripts/seed-client.js"
+  },
+  "dependencies": {
+    "@scalar/express-api-reference": "^0.10.34",
+    "argon2": "^0.41.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "hpp": "^0.2.3",
+    "jose": "^5.9.6",
+    "otplib": "^12.0.1",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.5",
+    "pino-pretty": "^13.0.0",
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.5"
+  }
+}
