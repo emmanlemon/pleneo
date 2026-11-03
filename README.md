@@ -1,14 +1,14 @@
-# Planeo platform
+# Pleneo platform
 
 Four services: one identity provider, one event bus, one management plane, one IoT cloud.
 
 ```
 authzero/            Identity: users, sessions, MFA, OAuth2 client credentials, JWKS, signed outbox webhook (port 4000)
-planeo-events/       Event bus: events, Postgres job queues with backoff and dead letter, cron scheduler,
+pleneo-events/       Event bus: events, Postgres job queues with backoff and dead letter, cron scheduler,
                      signed webhook subscriptions, email dispatch (log / Mailtrap / Gmail) (port 4200)
-planeo-management/   Management API (port 4100) with transactional outbox, notifications, inbound webhook,
+pleneo-management/   Management API (port 4100) with transactional outbox, notifications, inbound webhook,
                      and the Next.js console (port 3000) with notification bell, queue admin and device UI
-planeo-iot/          IoT cloud: MQTT broker and HTTP device plane, device registry, credentials, telemetry ingestion,
+pleneo-iot/          IoT cloud: MQTT broker and HTTP device plane, device registry, credentials, telemetry ingestion,
                      threshold rules, alerts, commands and device shadow state (port 4300)
 scripts/             connect-local.mjs wires all four services for local development
 ```
@@ -17,15 +17,15 @@ scripts/             connect-local.mjs wires all four services for local develop
 
 ```
 user action ──▶ management API ──(same transaction)──▶ outbox_events
-                                   outbox relay ──(client credentials)──▶ planeo-events POST /events
-planeo-events ── fan-out in the event transaction ──▶ webhook.deliver jobs ──▶ management POST /webhooks/events (HMAC)
+                                   outbox relay ──(client credentials)──▶ pleneo-events POST /events
+pleneo-events ── fan-out in the event transaction ──▶ webhook.deliver jobs ──▶ management POST /webhooks/events (HMAC)
                                                   └──▶ internal handlers ──▶ email.send jobs ──▶ Mailtrap / Gmail / log
-authzero outbox ──(HMAC webhook)──▶ planeo-events POST /ingest/authzero ──▶ auth.* events ──▶ verification / reset emails
+authzero outbox ──(HMAC webhook)──▶ pleneo-events POST /ingest/authzero ──▶ auth.* events ──▶ verification / reset emails
 management webhook handler ──▶ notifications table ──▶ console bell (polling) ──▶ optional email.send job
 
-device ──(device token over MQTT or HTTP)──▶ planeo-iot ingest ──▶ rules engine ──▶ alert + outbox
-                                              └──▶ planeo-events ──▶ webhook ──▶ notification + alert email
-planeo-iot sweeper ──▶ iot.device.offline ──▶ same path
+device ──(device token over MQTT or HTTP)──▶ pleneo-iot ingest ──▶ rules engine ──▶ alert + outbox
+                                              └──▶ pleneo-events ──▶ webhook ──▶ notification + alert email
+pleneo-iot sweeper ──▶ iot.device.offline ──▶ same path
 ```
 
 Every hop is idempotent: outbox rows carry an idempotency key, events deduplicate on it, deliveries deduplicate per event and subscription, the inbound webhook records processed event ids, and scheduled jobs deduplicate per cron slot. Failures retry with exponential backoff and land in the dead-letter view where an admin can retry or cancel.
@@ -37,9 +37,9 @@ Every service publishes an OpenAPI 3.1 document and a Scalar reference UI. Reque
 | Service           | Reference                  | Document      | Operations |
 | ----------------- | -------------------------- | ------------- | ---------- |
 | authzero          | http://localhost:4000/docs | /openapi.json | 40         |
-| planeo-management | http://localhost:4100/docs | /openapi.json | 27         |
-| planeo-events     | http://localhost:4200/docs | /openapi.json | 23         |
-| planeo-iot        | http://localhost:4300/docs | /openapi.json | 37         |
+| pleneo-management | http://localhost:4100/docs | /openapi.json | 27         |
+| pleneo-events     | http://localhost:4200/docs | /openapi.json | 23         |
+| pleneo-iot        | http://localhost:4300/docs | /openapi.json | 37         |
 
 Set `DOCS_ENABLED=false` to remove both endpoints. The reference page loads Scalar from a CDN, so it needs outbound internet; `/openapi.json` is served locally and always works.
 
@@ -48,7 +48,7 @@ Set `DOCS_ENABLED=false` to remove both endpoints. The reference page loads Scal
 The console does not poll for notifications. The management API runs a Socket.IO server on its own port, and the inbound webhook pushes to the browser as soon as an event is handled:
 
 ```
-planeo-events ──▶ POST /webhooks/events ──▶ notification row ──▶ Socket.IO ──▶ console updates
+pleneo-events ──▶ POST /webhooks/events ──▶ notification row ──▶ Socket.IO ──▶ console updates
 ```
 
 The browser authenticates its handshake with the same session cookie it uses for REST, and each connection joins a private room keyed by user id, so a client only ever receives its own events. Service clients may still present a bearer token. A rejected handshake makes the console revalidate its session. The header shows a Live indicator while the socket is connected, and polling stays as a slow fallback.
@@ -57,15 +57,15 @@ Events: `notification:new`, `notification:read`, `event:received`.
 
 ## Backend for frontend
 
-The console never holds a token and never learns where the identity provider lives. `planeo-management` is the only origin its browser code knows; everything else is reached through it.
+The console never holds a token and never learns where the identity provider lives. `pleneo-management` is the only origin its browser code knows; everything else is reached through it.
 
 ```
-browser ──(session cookie)──▶ planeo-management /bff/* ──(bearer, server side)──▶ authzero
-                                                       ├──▶ planeo-events
-                                                       └──▶ planeo-iot
+browser ──(session cookie)──▶ pleneo-management /bff/* ──(bearer, server side)──▶ authzero
+                                                       ├──▶ pleneo-events
+                                                       └──▶ pleneo-iot
 ```
 
-Signing in posts credentials to the gateway, which calls authzero itself, encrypts the access and refresh tokens with AES-256-GCM and stores them in `bff_sessions`. The browser receives two cookies: an opaque `planeo_session` that is httpOnly, and a readable `planeo_csrf` whose hash the gateway holds. The login response carries the profile and the CSRF token, never a token.
+Signing in posts credentials to the gateway, which calls authzero itself, encrypts the access and refresh tokens with AES-256-GCM and stores them in `bff_sessions`. The browser receives two cookies: an opaque `pleneo_session` that is httpOnly, and a readable `pleneo_csrf` whose hash the gateway holds. The login response carries the profile and the CSRF token, never a token.
 
 The provider token stops at the gateway. For each proxied call the gateway mints a 60 second HS256 assertion bound to one upstream and sends that instead, so no authzero token ever leaves the gateway process.
 
@@ -88,16 +88,16 @@ The proxy is a policy enforcement point, not a pass-through.
 
 **Resilience.** Reads retry up to twice on a connection error or a 502, 503 or 504, with exponential backoff and jitter; writes never retry. Each upstream has its own circuit breaker that opens after a run of failures, short-circuits with `Retry-After` while open, then lets one probe through. One failing upstream cannot trip the other. Timeouts are per route, and responses stream rather than buffer, capped by `GATEWAY_MAX_RESPONSE_BYTES`.
 
-**Header hygiene.** Hop-by-hop headers, cookies and any client-supplied `Authorization` or `X-Planeo-Identity` are dropped on the way in. Forwarding headers and the request id are set by the gateway. On the way out only a short list passes, and an upstream `Set-Cookie` is discarded so no upstream can plant a cookie on the console origin.
+**Header hygiene.** Hop-by-hop headers, cookies and any client-supplied `Authorization` or `X-Pleneo-Identity` are dropped on the way in. Forwarding headers and the request id are set by the gateway. On the way out only a short list passes, and an upstream `Set-Cookie` is discarded so no upstream can plant a cookie on the console origin.
 
 **Visibility.** `GET /admin/gateway` returns per-upstream request counts, status classes, retries, latency and breaker state. Admin role required.
 
 ## Lightweight identity in the services
 
-`planeo-events` and `planeo-iot` no longer call the identity provider on the request path. The gateway has already verified the authzero token, so it mints a compact assertion and the upstream verifies it locally:
+`pleneo-events` and `pleneo-iot` no longer call the identity provider on the request path. The gateway has already verified the authzero token, so it mints a compact assertion and the upstream verifies it locally:
 
 ```
-gateway ──▶ HS256 assertion (iss planeo-gateway, aud planeo-iot, 60s) ──▶ planeo-iot verifies with the shared key
+gateway ──▶ HS256 assertion (iss pleneo-gateway, aud pleneo-iot, 60s) ──▶ pleneo-iot verifies with the shared key
 ```
 
 That replaces a JWKS lookup plus an RS256 verify per request with one symmetric verify and no network call. The assertion is bound to a single audience, so one minted for the events service is rejected by the IoT service. A service client calling an upstream directly still presents an authzero bearer token, and each service keeps its JWKS verifier for that path.
@@ -106,7 +106,7 @@ That replaces a JWKS lookup plus an RS256 verify per request with one symmetric 
 
 ## Email
 
-`planeo-events` owns delivery. `EMAIL_PROVIDER` selects one of three:
+`pleneo-events` owns delivery. `EMAIL_PROVIDER` selects one of three:
 
 | Provider   | Use                                                                  |
 | ---------- | -------------------------------------------------------------------- |
@@ -130,7 +130,7 @@ curl -X POST http://localhost:4100/admin/email/test \
 
 This one does. It re-signs outbound HTTPS with a Cloudflare Gateway root that Node does not ship, so sends failed with `self-signed certificate in certificate chain` until the root was trusted.
 
-`docker/ca/` is mounted read-only at `/etc/planeo-ca` in the events service, and `NODE_EXTRA_CA_CERTS` points at the root inside it. That adds a trusted root; it does not disable verification, so a certificate that root did not sign is still rejected. See `docker/ca/README.md` to replace it or drop it on a network that does not inspect TLS. Never set `NODE_TLS_REJECT_UNAUTHORIZED=0`.
+`docker/ca/` is mounted read-only at `/etc/pleneo-ca` in the events service, and `NODE_EXTRA_CA_CERTS` points at the root inside it. That adds a trusted root; it does not disable verification, so a certificate that root did not sign is still rejected. See `docker/ca/README.md` to replace it or drop it on a network that does not inspect TLS. Never set `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
 ### Sandbox versus live sending
 
@@ -150,9 +150,9 @@ docker compose up -d --build
 | http://localhost:3000 | Console, sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` |
 | http://localhost:4100 | management API and the BFF, the only origin the console calls      |
 | http://localhost:4000 | authzero, reached by services and by its own docs page             |
-| http://localhost:4200 | planeo-events                                                      |
-| http://localhost:4300 | planeo-iot                                                         |
-| mqtt://localhost:1883 | planeo-iot device plane                                            |
+| http://localhost:4200 | pleneo-events                                                      |
+| http://localhost:4300 | pleneo-iot                                                         |
+| mqtt://localhost:1883 | pleneo-iot device plane                                            |
 
 The last three ports stay published so their Scalar pages and the device simulator keep working. The console does not use them.
 
@@ -173,18 +173,18 @@ The per-service `docker-compose.yml` files remain for working on one service alo
 
 ## Local setup without Docker
 
-1. Start Postgres (any of the compose files) and create databases `authzero`, `planeo`, `planeo_events`, `planeo_iot`.
+1. Start Postgres (any of the compose files) and create databases `authzero`, `pleneo`, `pleneo_events`, `pleneo_iot`.
 2. `authzero`: `npm install && npm run migrate && npm run seed:admin -- admin@example.com 'Adm1n-Str0ng-Passw0rd!' && npm run dev`
-3. `planeo-events`, `planeo-iot` and `planeo-management`: `npm install` in each (management is a workspace root).
-4. Wire everything: `ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='...' node scripts/connect-local.mjs` creates both authzero clients, generates shared secrets, writes the `.env` files, migrates planeo-events and planeo-iot, and seeds the management subscription for `project.*` and `iot.*`.
-5. Restart authzero, then `npm run dev` in `planeo-events` and `planeo-iot`, and `npm run dev:backend` plus `npm run dev:frontend` in `planeo-management`.
+3. `pleneo-events`, `pleneo-iot` and `pleneo-management`: `npm install` in each (management is a workspace root).
+4. Wire everything: `ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='...' node scripts/connect-local.mjs` creates both authzero clients, generates shared secrets, writes the `.env` files, migrates pleneo-events and pleneo-iot, and seeds the management subscription for `project.*` and `iot.*`.
+5. Restart authzero, then `npm run dev` in `pleneo-events` and `pleneo-iot`, and `npm run dev:backend` plus `npm run dev:frontend` in `pleneo-management`.
 
 Sign in at http://localhost:3000 as the admin to see Devices, and Queues, in the navigation.
 
 Register a device under Devices, copy its claim code, then drive it:
 
 ```bash
-cd planeo-iot
+cd pleneo-iot
 DEVICE_EXTERNAL_ID=sensor-001 DEVICE_CLAIM_CODE=XXXX-XXXX-XXXX ITERATIONS=6 SPIKE_AT=4 npm run simulate
 ```
 

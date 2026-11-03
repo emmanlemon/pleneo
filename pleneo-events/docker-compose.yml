@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pleneo_events
+      POSTGRES_PASSWORD: pleneo_events
+      POSTGRES_DB: pleneo_events
+    ports:
+      - '5434:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pleneo_events -d pleneo_events']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  events:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://pleneo_events:pleneo_events@postgres:5432/pleneo_events
+      HOST: 0.0.0.0
+    ports:
+      - '4200:4200'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+volumes:
+  pgdata:

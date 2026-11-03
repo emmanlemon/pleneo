@@ -1,12 +1,12 @@
 # Extra certificate authorities
 
-This directory is mounted read-only at `/etc/planeo-ca` in the services that make
+This directory is mounted read-only at `/etc/pleneo-ca` in the services that make
 outbound TLS calls. Point `NODE_EXTRA_CA_CERTS` at a file here to have Node trust
 that root in addition to its built-in bundle.
 
 ```bash
 # .env
-NODE_EXTRA_CA_CERTS=/etc/planeo-ca/tls-inspection-root.crt
+NODE_EXTRA_CA_CERTS=/etc/pleneo-ca/tls-inspection-root.crt
 ```
 
 Leave `NODE_EXTRA_CA_CERTS` empty and nothing changes.

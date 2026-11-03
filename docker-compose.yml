@@ -1,4 +1,4 @@
-name: planeo
+name: pleneo
 
 x-db: &db
   POSTGRES_HOST: postgres
@@ -8,15 +8,15 @@ x-auth: &auth
   AUTH_ISSUER: http://localhost:4000
   AUTH_JWKS_URL: http://authzero:4000/.well-known/jwks.json
   AUTH_INTERNAL_URL: http://authzero:4000
-  AUTH_AUDIENCE: planeo
+  AUTH_AUDIENCE: pleneo
   INTERNAL_IDENTITY_KEY: ${INTERNAL_IDENTITY_KEY}
-  INTERNAL_IDENTITY_ISSUER: planeo-gateway
+  INTERNAL_IDENTITY_ISSUER: pleneo-gateway
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: planeo
+      POSTGRES_USER: pleneo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: authzero
     volumes:
@@ -25,7 +25,7 @@ services:
     ports:
       - '5432:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U planeo -d authzero']
+      test: ['CMD-SHELL', 'pg_isready -U pleneo -d authzero']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -37,10 +37,10 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 4000
-      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/authzero
+      DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/authzero
       KEY_ENCRYPTION_KEY: ${AUTHZERO_KEK}
       JWT_ISSUER: http://localhost:4000
-      JWT_AUDIENCE: planeo
+      JWT_AUDIENCE: pleneo
       DOCS_ENABLED: ${DOCS_ENABLED:-true}
       # localhost is a trustworthy origin, so the Secure cookie still reaches the browser over plain HTTP
       COOKIE_SECURE: 'true'
@@ -57,10 +57,10 @@ services:
   authzero-seed:
     build: ./authzero
     environment:
-      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/authzero
+      DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/authzero
       KEY_ENCRYPTION_KEY: ${AUTHZERO_KEK}
       JWT_ISSUER: http://localhost:4000
-      JWT_AUDIENCE: planeo
+      JWT_AUDIENCE: pleneo
       COOKIE_SECURE: 'true'
       LOG_LEVEL: info
       ADMIN_EMAIL: ${ADMIN_EMAIL}
@@ -78,23 +78,23 @@ services:
       - -c
       - >-
         node scripts/seed-admin.js "$$ADMIN_EMAIL" "$$ADMIN_PASSWORD" && node scripts/seed-client.js
-        planeo-management-backend "$$MGMT_CLIENT_ID" "$$MGMT_CLIENT_SECRET"
-        events:publish,jobs:enqueue,projects:read && node scripts/seed-client.js planeo-iot
+        pleneo-management-backend "$$MGMT_CLIENT_ID" "$$MGMT_CLIENT_SECRET"
+        events:publish,jobs:enqueue,projects:read && node scripts/seed-client.js pleneo-iot
         "$$IOT_CLIENT_ID" "$$IOT_CLIENT_SECRET" events:publish
 
   events:
-    build: ./planeo-events
+    build: ./pleneo-events
     environment:
       <<: [*db, *auth]
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 4200
-      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo_events
+      DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/pleneo_events
       AUTHZERO_WEBHOOK_SECRET: ${AUTHZERO_WEBHOOK_SECRET}
       SECRETS_ENCRYPTION_KEY: ${EVENTS_SECRETS_KEY}
       APP_BASE_URL: http://localhost:3000
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-log}
-      EMAIL_FROM: ${EMAIL_FROM:-Planeo <no-reply@planeo.local>}
+      EMAIL_FROM: ${EMAIL_FROM:-Pleneo <no-reply@pleneo.local>}
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       MAILTRAP_API_KEY: ${MAILTRAP_API_KEY:-}
@@ -104,21 +104,21 @@ services:
     ports:
       - '4200:4200'
     volumes:
-      - ./docker/ca:/etc/planeo-ca:ro
+      - ./docker/ca:/etc/pleneo-ca:ro
     depends_on:
       postgres:
         condition: service_healthy
     command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
 
   events-seed:
-    build: ./planeo-events
+    build: ./pleneo-events
     environment:
       <<: [*db, *auth]
-      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo_events
+      DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/pleneo_events
       AUTHZERO_WEBHOOK_SECRET: ${AUTHZERO_WEBHOOK_SECRET}
       SECRETS_ENCRYPTION_KEY: ${EVENTS_SECRETS_KEY}
       APP_BASE_URL: http://localhost:3000
-      EMAIL_FROM: ${EMAIL_FROM:-Planeo <no-reply@planeo.local>}
+      EMAIL_FROM: ${EMAIL_FROM:-Pleneo <no-reply@pleneo.local>}
     depends_on:
       events:
         condition: service_healthy
@@ -127,7 +127,7 @@ services:
       [
         'node',
         'scripts/seed-subscription.js',
-        'planeo-management',
+        'pleneo-management',
         'http://backend:4100/webhooks/events',
         'project.*,iot.*',
         '${MANAGEMENT_WEBHOOK_SECRET}',
@@ -135,14 +135,14 @@ services:
 
   backend:
     build:
-      context: ./planeo-management
+      context: ./pleneo-management
       dockerfile: backend/Dockerfile
     environment:
       <<: [*db, *auth]
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 4100
-      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo
+      DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/pleneo
       EVENTS_URL: http://events:4200
       EVENTS_CLIENT_ID: ${MGMT_CLIENT_ID}
       EVENTS_CLIENT_SECRET: ${MGMT_CLIENT_SECRET}
@@ -165,13 +165,13 @@ services:
     command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
 
   iot:
-    build: ./planeo-iot
+    build: ./pleneo-iot
     environment:
       <<: [*db, *auth]
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 4300
-      DATABASE_URL: postgres://planeo:${POSTGRES_PASSWORD}@postgres:5432/planeo_iot
+      DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/pleneo_iot
       DEVICE_SECRET_KEY: ${IOT_DEVICE_SECRET_KEY}
       EVENTS_URL: http://events:4200
       EVENTS_CLIENT_ID: ${IOT_CLIENT_ID}
@@ -193,7 +193,7 @@ services:
 
   frontend:
     build:
-      context: ./planeo-management
+      context: ./pleneo-management
       dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_BFF_URL: http://localhost:4100

@@ -73,7 +73,7 @@ export function buildOpenApiDocument() {
       title: 'authzero',
       version: '1.0.0',
       description: [
-        'Identity for the Planeo platform: users, sessions, multi-factor authentication, OAuth2 client credentials and signing keys.',
+        'Identity for the Pleneo platform: users, sessions, multi-factor authentication, OAuth2 client credentials and signing keys.',
         '',
         '### Tokens',
         '',

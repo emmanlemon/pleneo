@@ -17,10 +17,10 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) fail('Set ADMIN_EMAIL and ADMIN_PASSWORD (a
 
 const files = {
   authzero: path.join(root, 'authzero', '.env'),
-  events: path.join(root, 'planeo-events', '.env'),
-  backend: path.join(root, 'planeo-management', 'backend', '.env'),
-  iot: path.join(root, 'planeo-iot', '.env'),
-  frontend: path.join(root, 'planeo-management', 'frontend', '.env.local'),
+  events: path.join(root, 'pleneo-events', '.env'),
+  backend: path.join(root, 'pleneo-management', 'backend', '.env'),
+  iot: path.join(root, 'pleneo-iot', '.env'),
+  frontend: path.join(root, 'pleneo-management', 'frontend', '.env.local'),
 };
 
 function fail(message) {
@@ -74,10 +74,10 @@ const token48 = () => randomBytes(36).toString('base64url');
 
 async function main() {
   ensureEnv(files.authzero, path.join(root, 'authzero', '.env.example'));
-  ensureEnv(files.events, path.join(root, 'planeo-events', '.env.example'));
-  ensureEnv(files.backend, path.join(root, 'planeo-management', 'backend', '.env.example'));
-  ensureEnv(files.iot, path.join(root, 'planeo-iot', '.env.example'));
-  ensureEnv(files.frontend, path.join(root, 'planeo-management', 'frontend', '.env.example'));
+  ensureEnv(files.events, path.join(root, 'pleneo-events', '.env.example'));
+  ensureEnv(files.backend, path.join(root, 'pleneo-management', 'backend', '.env.example'));
+  ensureEnv(files.iot, path.join(root, 'pleneo-iot', '.env.example'));
+  ensureEnv(files.frontend, path.join(root, 'pleneo-management', 'frontend', '.env.example'));
 
   const eventsEnv = readEnv(files.events);
   const authzeroEnv = readEnv(files.authzero);
@@ -112,8 +112,8 @@ async function main() {
     return created;
   };
 
-  const client = await createClient('planeo-management-backend', ['events:publish', 'jobs:enqueue', 'projects:read']);
-  const iotClient = await createClient('planeo-iot', ['events:publish']);
+  const client = await createClient('pleneo-management-backend', ['events:publish', 'jobs:enqueue', 'projects:read']);
+  const iotClient = await createClient('pleneo-iot', ['events:publish']);
 
   upsertEnv(files.authzero, {
     EVENT_WEBHOOK_URL: `${EVENTS_URL}/ingest/authzero`,
@@ -122,10 +122,10 @@ async function main() {
   upsertEnv(files.events, {
     AUTHZERO_WEBHOOK_SECRET: authzeroWebhookSecret,
     SECRETS_ENCRYPTION_KEY: secretsKey,
-    DATABASE_URL: eventsEnv.DATABASE_URL || `${DB_BASE}/planeo_events`,
+    DATABASE_URL: eventsEnv.DATABASE_URL || `${DB_BASE}/pleneo_events`,
     AUTH_ISSUER: AUTH_URL,
     INTERNAL_IDENTITY_KEY: identityKey,
-    INTERNAL_IDENTITY_AUDIENCE: 'planeo-events',
+    INTERNAL_IDENTITY_AUDIENCE: 'pleneo-events',
   });
   upsertEnv(files.backend, {
     EVENTS_URL,
@@ -144,27 +144,27 @@ async function main() {
   upsertEnv(files.iot, {
     AUTH_ISSUER: AUTH_URL,
     DEVICE_SECRET_KEY: deviceSecretKey,
-    DATABASE_URL: iotEnv.DATABASE_URL || `${DB_BASE}/planeo_iot`,
+    DATABASE_URL: iotEnv.DATABASE_URL || `${DB_BASE}/pleneo_iot`,
     EVENTS_URL,
     EVENTS_CLIENT_ID: iotClient.client_id,
     EVENTS_CLIENT_SECRET: iotClient.clientSecret,
     OUTBOX_ENABLED: 'true',
     INTERNAL_IDENTITY_KEY: identityKey,
-    INTERNAL_IDENTITY_AUDIENCE: 'planeo-iot',
+    INTERNAL_IDENTITY_AUDIENCE: 'pleneo-iot',
   });
   upsertEnv(files.frontend, { NEXT_PUBLIC_BFF_URL: API_URL });
 
-  const eventsDir = path.join(root, 'planeo-events');
+  const eventsDir = path.join(root, 'pleneo-events');
   execFileSync('node', ['src/infrastructure/database/migrate.js'], { cwd: eventsDir, stdio: 'inherit' });
   execFileSync('node', ['src/infrastructure/database/migrate.js'], {
-    cwd: path.join(root, 'planeo-iot'),
+    cwd: path.join(root, 'pleneo-iot'),
     stdio: 'inherit',
   });
   execFileSync(
     'node',
     [
       'scripts/seed-subscription.js',
-      'planeo-management',
+      'pleneo-management',
       `${API_URL}/webhooks/events`,
       'project.*,iot.*',
       managementWebhookSecret,
@@ -181,10 +181,10 @@ async function main() {
       'Connected:',
       `  authzero  -> ${EVENTS_URL}/ingest/authzero (signed outbox webhook)`,
       `  backend   -> ${EVENTS_URL} via client ${client.client_id} (outbox relay + email jobs)`,
-      `  events    -> ${API_URL}/webhooks/events (subscription planeo-management, project.* and iot.*)`,
+      `  events    -> ${API_URL}/webhooks/events (subscription pleneo-management, project.* and iot.*)`,
       `  iot       -> ${EVENTS_URL} via client ${iotClient.client_id} (device, alert and lifecycle events)`,
       '',
-      'Restart authzero, the management backend and planeo-iot so they pick up the new .env values.',
+      'Restart authzero, the management backend and pleneo-iot so they pick up the new .env values.',
       '',
     ].join('\n'),
   );

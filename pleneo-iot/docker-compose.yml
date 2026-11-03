@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pleneo_iot
+      POSTGRES_PASSWORD: pleneo_iot
+      POSTGRES_DB: pleneo_iot
+    ports:
+      - '5435:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pleneo_iot -d pleneo_iot']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  iot:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://pleneo_iot:pleneo_iot@postgres:5432/pleneo_iot
+      HOST: 0.0.0.0
+    ports:
+      - '4300:4300'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "node src/infrastructure/database/migrate.js && node src/server.js"
+
+volumes:
+  pgdata:

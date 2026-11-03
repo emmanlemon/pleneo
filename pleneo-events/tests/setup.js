@@ -1,0 +1,16 @@
+process.env.NODE_ENV = 'test';
+process.env.LOG_LEVEL = 'silent';
+process.env.RATE_LIMIT_ENABLED = 'false';
+process.env.WORKER_ENABLED = 'false';
+process.env.SCHEDULER_ENABLED = 'false';
+process.env.DATABASE_URL ??= 'postgres://authzero:authzero@localhost:5432/pleneo_events';
+process.env.AUTH_ISSUER ??= 'http://localhost:4000';
+process.env.AUTH_AUDIENCE ??= 'pleneo';
+process.env.AUTHZERO_WEBHOOK_SECRET = 'test-webhook-secret-with-at-least-32-chars';
+process.env.SECRETS_ENCRYPTION_KEY = 'a3f1c9e2b7d4085f6e1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70';
+process.env.APP_BASE_URL = 'http://localhost:3000';
+process.env.EMAIL_FROM = 'Pleneo <no-reply@pleneo.test>';
+process.env.EMAIL_PROVIDER = 'log';
+process.env.INTERNAL_IDENTITY_KEY = '9f3c1a7e5d2b8406c9e7a5f3d1b9074e2c6a8d0f4b2e6a8c0d2f4b6a8c0e2d46';
+process.env.INTERNAL_IDENTITY_AUDIENCE = 'pleneo-events';
+process.env.MAILTRAP_API_KEY = 'test-mailtrap-token';
