@@ -4,6 +4,7 @@
  *
  * @typedef {object} ProjectRepository
  * @property {(filter: { ownerId: string|null, status?: string, search?: string, cursor?: string, limit: number }) => Promise<object[]>} list
+ * @property {(filter: { ownerId: string|null, openStatuses: string[], horizonDays: number, limit: number }) => Promise<{ counts: Record<string, { count: number, overdue: number }>, dueSoon: object[] }>} summarize
  * @property {(id: string) => Promise<object|null>} findById
  * @property {(project: object, tx?: object) => Promise<object>} insert
  * @property {(id: string, changes: object, actorId: string, tx?: object) => Promise<object|null>} update

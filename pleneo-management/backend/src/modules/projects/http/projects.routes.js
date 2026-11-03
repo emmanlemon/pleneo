@@ -10,6 +10,7 @@ export function makeProjectsRouter(controller) {
 
   router.get('/', v.validateList, h(controller.list));
   router.post('/', writeLimiter, v.validateCreate, h(controller.create));
+  router.get('/summary', h(controller.summary));
   router.get('/:id', v.validateId, h(controller.get));
   router.patch('/:id', writeLimiter, v.validateId, v.validateUpdate, h(controller.update));
   router.delete('/:id', writeLimiter, v.validateId, h(controller.remove));

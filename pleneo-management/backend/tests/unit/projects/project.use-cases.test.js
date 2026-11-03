@@ -26,12 +26,19 @@ const seed = (overrides = {}) => ({
 function harness(rows = [seed()]) {
   const store = new Map(rows.map((row) => [row.id, row]));
   const published = [];
-  const calls = { list: [], update: [], softDelete: [] };
+  const calls = { list: [], summarize: [], update: [], softDelete: [] };
 
   const repository = {
     list: async (filter) => {
       calls.list.push(filter);
       return [...store.values()].filter((p) => !filter.ownerId || p.ownerId === filter.ownerId);
+    },
+    summarize: async (filter) => {
+      calls.summarize.push(filter);
+      return {
+        counts: { active: { count: 3, overdue: 1 }, on_hold: { count: 1, overdue: 1 }, completed: { count: 2, overdue: 0 } },
+        dueSoon: [...store.values()],
+      };
     },
     findById: async (id) => store.get(id) ?? null,
     insert: async (project) => {
@@ -77,6 +84,21 @@ describe('listing', () => {
   it('returns a cursor only when the page is full', async () => {
     expect((await h.useCases.list(user, { limit: 1 })).nextCursor).toBe(PROJECT_ID);
     expect((await h.useCases.list(user, { limit: 25 })).nextCursor).toBeNull();
+  });
+});
+
+describe('summary', () => {
+  it('reports every status, including those with no projects', async () => {
+    const summary = await h.useCases.summary(user);
+    expect(summary.byStatus).toEqual({ planning: 0, active: 3, on_hold: 1, completed: 2, archived: 0 });
+    expect(summary).toMatchObject({ total: 6, overdue: 2, horizonDays: 14 });
+  });
+
+  it('asks only about open work and scopes it like listing', async () => {
+    await h.useCases.summary(user);
+    await h.useCases.summary(admin);
+    expect(h.calls.summarize[0]).toMatchObject({ ownerId: USER_ID, openStatuses: ['planning', 'active', 'on_hold'] });
+    expect(h.calls.summarize[1].ownerId).toBeNull();
   });
 });
 

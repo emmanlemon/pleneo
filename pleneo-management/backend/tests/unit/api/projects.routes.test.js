@@ -130,6 +130,15 @@ describe('/v1/projects', () => {
     expect(res.body.allowed_transitions).toEqual(['planning', 'active', 'on_hold', 'archived']);
   });
 
+  it('summarises the portfolio without treating "summary" as an id', async () => {
+    repository.summarize.mockResolvedValue({ counts: { active: { count: 1, overdue: 1 } }, dueSoon: [project] });
+    const res = await api().get('/v1/projects/summary');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ total: 1, overdue: 1, byStatus: { active: 1, planning: 0 } });
+    expect(res.body.dueSoon[0]).toMatchObject({ id: PROJECT_ID, allowed_transitions: expect.any(Array) });
+    expect(repository.findById).not.toHaveBeenCalled();
+  });
+
   it('deletes with 204', async () => {
     expect((await api().delete(`/v1/projects/${PROJECT_ID}`)).status).toBe(204);
     expect(repository.softDelete).toHaveBeenCalledWith(PROJECT_ID, USER_ID, expect.anything());

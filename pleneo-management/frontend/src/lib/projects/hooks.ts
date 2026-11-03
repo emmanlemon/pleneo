@@ -8,7 +8,10 @@ export const projectKeys = {
   all: ['projects'] as const,
   list: (params: ProjectListParams) => ['projects', 'list', params] as const,
   detail: (id: string) => ['projects', 'detail', id] as const,
+  summary: ['projects', 'summary'] as const,
 };
+
+export const useProjectSummary = () => useQuery({ queryKey: projectKeys.summary, queryFn: projectsApi.summary });
 
 export const useProjects = (params: ProjectListParams = {}) =>
   useQuery({ queryKey: projectKeys.list(params), queryFn: () => projectsApi.list(params) });

@@ -245,6 +245,30 @@ export function buildOpenApiDocument() {
           responses: { 201: json('Created', ref('Project')), ...errors(400, 401, 403) },
         }),
       },
+      '/v1/projects/summary': {
+        get: operation({
+          tag: 'Projects',
+          summary: 'Portfolio summary',
+          description:
+            'Counts by status over the projects the caller can see, how many open projects are past their end date, and the open projects ending soonest, overdue first.',
+          responses: {
+            200: json('Portfolio summary', {
+              type: 'object',
+              properties: {
+                total: { type: 'integer' },
+                byStatus: {
+                  type: 'object',
+                  properties: Object.fromEntries(PROJECT_STATUSES.map((status) => [status, { type: 'integer' }])),
+                },
+                overdue: { type: 'integer' },
+                horizonDays: { type: 'integer' },
+                dueSoon: { type: 'array', items: ref('Project') },
+              },
+            }),
+            ...errors(401),
+          },
+        }),
+      },
       '/v1/projects/{id}': {
         get: operation({
           tag: 'Projects',

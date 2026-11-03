@@ -9,6 +9,10 @@ export const makeController = (useCases) => ({
     const { projects, nextCursor } = await useCases.list(req.auth, req.query);
     ok(res, { projects: projects.map(present), nextCursor });
   },
+  summary: async (req, res) => {
+    const summary = await useCases.summary(req.auth);
+    ok(res, { ...summary, dueSoon: summary.dueSoon.map(present) });
+  },
   get: async (req, res) => ok(res, present(await useCases.get(req.auth, req.params.id))),
   create: async (req, res) => created(res, present(await useCases.create(req.auth, req.body))),
   update: async (req, res) => ok(res, present(await useCases.update(req.auth, req.params.id, req.body))),

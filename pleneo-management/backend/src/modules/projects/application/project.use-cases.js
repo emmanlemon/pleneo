@@ -1,6 +1,10 @@
 import { DomainErrors } from '#common/errors/domain-errors.js';
 import { actorOf, assertCanAccess, resolveOwnerId, visibleOwnerId } from '../domain/project-access.js';
 import { applyChanges, createProject } from '../domain/project.js';
+import { OPEN_STATUSES, PROJECT_STATUSES } from '../domain/project-status.js';
+
+const DUE_SOON_DAYS = 14;
+const DUE_SOON_LIMIT = 5;
 
 const EVENT_KEYS = {
   created: (project) => `project.created:${project.id}`,
@@ -22,6 +26,23 @@ export const makeUseCases = ({ repository, events, unitOfWork }) => {
     async list(auth, { limit, cursor, status, search }) {
       const projects = await repository.list({ ownerId: visibleOwnerId(auth), status, search, cursor, limit });
       return { projects, nextCursor: projects.length === limit ? projects.at(-1).id : null };
+    },
+
+    async summary(auth) {
+      const { counts, dueSoon } = await repository.summarize({
+        ownerId: visibleOwnerId(auth),
+        openStatuses: OPEN_STATUSES,
+        horizonDays: DUE_SOON_DAYS,
+        limit: DUE_SOON_LIMIT,
+      });
+      const byStatus = Object.fromEntries(PROJECT_STATUSES.map((status) => [status, counts[status]?.count ?? 0]));
+      return {
+        total: Object.values(byStatus).reduce((sum, n) => sum + n, 0),
+        byStatus,
+        overdue: Object.values(counts).reduce((sum, c) => sum + c.overdue, 0),
+        horizonDays: DUE_SOON_DAYS,
+        dueSoon,
+      };
     },
 
     get: (auth, id) => load(deps, id, auth, { write: false }),

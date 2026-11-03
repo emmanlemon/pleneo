@@ -33,6 +33,30 @@ export async function list({ ownerId, status, search, cursor, limit }) {
   return rows.map(toEntity);
 }
 
+export async function summarize({ ownerId, openStatuses, horizonDays, limit }) {
+  const scoped = (params) => (ownerId ? ` AND owner_id = $${params.push(ownerId)}` : '');
+  const countParams = [openStatuses];
+  const dueParams = [openStatuses, horizonDays, limit];
+  const [counts, due] = await Promise.all([
+    query(
+      `SELECT status, count(*)::int AS count,
+              count(*) FILTER (WHERE status = ANY($1) AND ends_on < current_date)::int AS overdue
+         FROM projects WHERE deleted_at IS NULL${scoped(countParams)} GROUP BY status`,
+      countParams,
+    ),
+    query(
+      `SELECT ${COLUMNS} FROM projects
+        WHERE deleted_at IS NULL AND status = ANY($1) AND ends_on <= current_date + $2::int${scoped(dueParams)}
+        ORDER BY ends_on, id LIMIT $3`,
+      dueParams,
+    ),
+  ]);
+  return {
+    counts: Object.fromEntries(counts.rows.map((row) => [row.status, { count: row.count, overdue: row.overdue }])),
+    dueSoon: due.rows.map(toEntity),
+  };
+}
+
 export const findById = async (id) =>
   toEntity((await query(`SELECT ${COLUMNS} FROM projects WHERE id = $1 AND deleted_at IS NULL`, [id])).rows[0]);
 

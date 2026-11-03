@@ -13,6 +13,7 @@ export const deviceKeys = {
   series: (id: string, metric: string) => ['devices', 'series', id, metric] as const,
   commands: (id: string) => ['devices', 'commands', id] as const,
   alerts: (params: Record<string, unknown>) => ['devices', 'alerts', params] as const,
+  alertStats: ['devices', 'alerts', 'stats'] as const,
   types: ['devices', 'types'] as const,
   simulation: (id: string) => ['devices', 'simulation', id] as const,
 };
@@ -56,6 +57,8 @@ export const useCommands = (id: string) =>
 
 export const useAlerts = (params: { deviceId?: string; status?: string; limit?: number } = {}) =>
   useQuery({ queryKey: deviceKeys.alerts(params), queryFn: () => devicesApi.alerts(params) });
+
+export const useAlertStats = () => useQuery({ queryKey: deviceKeys.alertStats, queryFn: devicesApi.alertStats });
 
 function useInvalidate() {
   const queryClient = useQueryClient();
