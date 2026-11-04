@@ -128,6 +128,7 @@ export function buildOpenApiDocument() {
             external_id: { type: 'string' },
             name: { type: 'string' },
             device_type_id: { type: 'string', format: 'uuid' },
+            project_id: { type: ['string', 'null'], format: 'uuid' },
             device_type_key: { type: 'string' },
             device_type_metrics: { type: 'array', items: toSchema(devices.metricDefinition) },
             owner_id: { type: 'string', format: 'uuid' },
@@ -293,6 +294,8 @@ export function buildOpenApiDocument() {
         get: operation({
           tag: 'Devices',
           summary: 'Fleet counters',
+          description: 'Counts the caller may see, optionally narrowed to one project.',
+          params: queryParams(devices.deviceStatsQuery),
           responses: { 200: json('Counts by status and connection', { type: 'object' }), ...errors(401) },
         }),
       },
@@ -604,6 +607,20 @@ export function buildOpenApiDocument() {
         }),
       },
 
+      '/v1/webhooks/events': {
+        post: operation({
+          tag: 'Webhooks',
+          summary: 'Receive a signed platform event',
+          description:
+            'Called by pleneo-events for the subscribed types. `project.deleted` releases the devices of that project. Verified with the HMAC signature headers, idempotent on the event id.',
+          security: [],
+          responses: {
+            202: json('Handled', { type: 'object', properties: { outcome: { type: 'string' } } }),
+            200: json('Duplicate or ignored', { type: 'object', properties: { outcome: { type: 'string' } } }),
+            ...errors(400, 401, 403),
+          },
+        }),
+      },
       '/v1/device/activate': {
         post: operation({
           tag: 'Device plane',

@@ -10,27 +10,32 @@ function extractBearer(req) {
   return scheme?.toLowerCase() === 'bearer' && token && !extra ? token : null;
 }
 
-const toPrincipal = (payload, viaGateway) =>
-  payload.token_use === 'client'
-    ? {
-        type: 'client',
-        clientId: payload.sub,
-        scopes: payload.scope?.split(' ') ?? [],
-        roles: [],
-        permissions: [],
-        jti: payload.jti,
-        viaGateway,
-      }
-    : {
-        type: 'user',
-        userId: payload.sub,
-        email: payload.email,
-        roles: payload.roles ?? [],
-        permissions: payload.permissions ?? [],
-        scopes: [],
-        jti: payload.jti,
-        viaGateway,
-      };
+function toPrincipal(payload, viaGateway) {
+  if (payload.token_use === 'client') {
+    const scopes = payload.scope ? payload.scope.split(' ') : [];
+    return {
+      type: 'client',
+      clientId: payload.sub,
+      scopes,
+      permissions: scopes,
+      roles: [],
+      jti: payload.jti,
+      viaGateway,
+    };
+  }
+  return {
+    type: 'user',
+    userId: payload.sub,
+    sessionId: payload.sid,
+    email: payload.email,
+    roles: payload.roles ?? [],
+    permissions: payload.permissions ?? [],
+    amr: payload.amr ?? [],
+    scopes: [],
+    jti: payload.jti,
+    viaGateway,
+  };
+}
 
 export const authenticate = asyncHandler(async (req, _res, next) => {
   const assertion = req.get(IDENTITY_HEADER);

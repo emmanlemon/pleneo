@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { applyFieldErrors, toApiError } from '@/lib/api/problem';
 import type { RegisteredDevice } from '@/lib/devices/api';
 import { useDeviceTypes, useRegisterDevice } from '@/lib/devices/hooks';
+import { useProjectOptions } from '@/lib/projects/hooks';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
@@ -15,6 +16,7 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const schema = z.object({
+  projectId: z.string().uuid('Choose a project'),
   externalId: z
     .string()
     .trim()
@@ -25,13 +27,17 @@ const schema = z.object({
 });
 
 type Values = z.infer<typeof schema>;
+const FIELDS = ['projectId', 'externalId', 'name', 'deviceTypeId', 'site'] as const;
 
-export function RegisterDeviceForm({ onRegistered }: { onRegistered: (device: RegisteredDevice) => void }) {
+type Props = { defaultProjectId?: string; onRegistered: (device: RegisteredDevice) => void };
+
+export function RegisterDeviceForm({ defaultProjectId, onRegistered }: Props) {
   const types = useDeviceTypes();
+  const projects = useProjectOptions();
   const register = useRegisterDevice();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { externalId: '', name: '', deviceTypeId: '', site: '' },
+    defaultValues: { projectId: defaultProjectId ?? '', externalId: '', name: '', deviceTypeId: '', site: '' },
   });
 
   const submit = form.handleSubmit(async (values) => {
@@ -42,9 +48,7 @@ export function RegisterDeviceForm({ onRegistered }: { onRegistered: (device: Re
       const apiError = toApiError(error);
       if (apiError.code === 'DUPLICATE_EXTERNAL_ID')
         return form.setError('externalId', { message: 'That device id is already registered' });
-      if (!applyFieldErrors(apiError, form.setError, ['externalId', 'name', 'deviceTypeId', 'site'])) {
-        form.setError('root', { message: apiError.message });
-      }
+      if (!applyFieldErrors(apiError, form.setError, FIELDS)) form.setError('root', { message: apiError.message });
     }
   });
 
@@ -56,6 +60,31 @@ export function RegisterDeviceForm({ onRegistered }: { onRegistered: (device: Re
             <AlertDescription>{form.formState.errors.root.message}</AlertDescription>
           </Alert>
         )}
+        <FormField
+          control={form.control}
+          name="projectId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Project</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full" aria-label="Project">
+                    <SelectValue placeholder={projects.isPending ? 'Loading projects…' : 'Select a project'} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {projects.data?.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>Every device belongs to one project.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="name"
@@ -93,7 +122,7 @@ export function RegisterDeviceForm({ onRegistered }: { onRegistered: (device: Re
               <FormLabel>Device type</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Device type">
                     <SelectValue placeholder={types.isPending ? 'Loading types…' : 'Select a device type'} />
                   </SelectTrigger>
                 </FormControl>
@@ -124,7 +153,7 @@ export function RegisterDeviceForm({ onRegistered }: { onRegistered: (device: Re
         />
         <div className="flex justify-end gap-2">
           <Button asChild variant="outline">
-            <Link href="/devices">Cancel</Link>
+            <Link href={defaultProjectId ? `/projects/${defaultProjectId}` : '/devices'}>Cancel</Link>
           </Button>
           <Button type="submit" disabled={register.isPending}>
             {register.isPending && <Loader2 className="animate-spin" />}

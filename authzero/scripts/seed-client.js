@@ -1,4 +1,5 @@
 import { closePool } from '#infra/database/pool.js';
+import { isPermission } from '#modules/users/catalogue.js';
 import { keyedHash } from '#infra/security/crypto.js';
 import { logger } from '#infra/logging/logger.js';
 import * as clients from '#modules/clients/client.repository.js';
@@ -14,6 +15,8 @@ async function main() {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  const unknown = scopes.filter((s) => !isPermission(s));
+  if (unknown.length) throw new Error(`unknown scopes: ${unknown.join(', ')}`);
 
   const client = await clients.upsertByClientId({
     clientId,

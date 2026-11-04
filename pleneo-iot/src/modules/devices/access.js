@@ -4,17 +4,32 @@ import * as devices from './device.repository.js';
 export const READ_SCOPE = 'devices:read';
 export const WRITE_SCOPE = 'devices:write';
 
-const isAdmin = (auth) => auth.type === 'user' && auth.roles.includes('admin');
+const hasPermission = (auth, permission) => auth?.permissions?.includes(permission) ?? false;
+const can = (auth, permission, ownerId) =>
+  hasPermission(auth, permission) || (auth?.type === 'user' && Boolean(ownerId) && ownerId === auth.userId);
 
-export const canReadAll = (auth) => isAdmin(auth) || (auth.type === 'client' && auth.scopes.includes(READ_SCOPE));
-export const canWriteAll = (auth) => isAdmin(auth) || (auth.type === 'client' && auth.scopes.includes(WRITE_SCOPE));
+export const canReadAll = (auth) => hasPermission(auth, READ_SCOPE);
+export const canWriteAll = (auth) => hasPermission(auth, WRITE_SCOPE);
 export const actorOf = (auth) => (auth.type === 'user' ? `user:${auth.userId}` : `client:${auth.clientId}`);
-export const ownerScope = (auth) => (canReadAll(auth) ? null : auth.userId);
+
+export function ownerScope(auth) {
+  if (canReadAll(auth)) return null;
+  if (auth?.type !== 'user') throw DomainErrors.insufficientScope();
+  return auth.userId;
+}
+
+export function resolveOwnerId(auth, requestedOwnerId) {
+  if (!requestedOwnerId) {
+    if (auth.type !== 'user') throw DomainErrors.ownerRequired();
+    return auth.userId;
+  }
+  if (requestedOwnerId !== auth.userId && !canWriteAll(auth)) throw DomainErrors.notOwner();
+  return requestedOwnerId;
+}
 
 export async function loadAccessible(id, auth, { write = false } = {}) {
   const device = await devices.findById(id);
   if (!device) throw DomainErrors.notFound('Device');
-  const allowed = write ? canWriteAll(auth) : canReadAll(auth);
-  if (!allowed && device.owner_id !== auth.userId) throw DomainErrors.notOwner();
+  if (!can(auth, write ? WRITE_SCOPE : READ_SCOPE, device.owner_id)) throw DomainErrors.notOwner();
   return device;
 }

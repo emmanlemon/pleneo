@@ -448,6 +448,15 @@ export function buildOpenApiDocument() {
           responses: { 200: json('Updated', { type: 'object' }), ...errors(400, 401, 429) },
         }),
       },
+      '/v1/auth/invitations/accept': {
+        post: operation({
+          tag: 'BFF',
+          summary: 'Accept an invitation and set the first password',
+          security: [],
+          body: jsonBody(bff.resetPasswordSchema),
+          responses: { 200: json('Activated', { type: 'object' }), ...errors(400, 401, 429) },
+        }),
+      },
       '/v1/auth/password/change': {
         post: operation({
           tag: 'BFF',
@@ -518,6 +527,63 @@ export function buildOpenApiDocument() {
           tag: 'Gateway',
           summary: "Proxy a rule call",
           description: "Forwarded to the device service.",
+          security: [{ sessionCookie: [] }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
+          responses: {
+            200: json('Whatever the upstream returned', { type: 'object' }),
+            ...errors(401, 403, 404, 429),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
+          },
+        }),
+      },
+      '/v1/users/{path}': {
+        get: operation({
+          tag: 'Gateway',
+          summary: 'Proxy a user administration call',
+          description:
+            'Forwarded to the identity provider with the caller’s own access token, so it applies its `users:*` and `roles:manage` checks itself. Invitations, status, lockouts, sessions and role grants.',
+          security: [{ sessionCookie: [] }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
+          responses: {
+            200: json('Whatever the upstream returned', { type: 'object' }),
+            ...errors(401, 403, 404, 429),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
+          },
+        }),
+      },
+      '/v1/roles/{path}': {
+        get: operation({
+          tag: 'Gateway',
+          summary: 'Proxy a role catalogue call',
+          description: 'Forwarded to the identity provider.',
+          security: [{ sessionCookie: [] }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
+          responses: {
+            200: json('Whatever the upstream returned', { type: 'object' }),
+            ...errors(401, 403, 404, 429),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
+          },
+        }),
+      },
+      '/v1/clients/{path}': {
+        get: operation({
+          tag: 'Gateway',
+          summary: 'Proxy an API client call',
+          description: 'Forwarded to the identity provider. Requires `clients:manage` there.',
+          security: [{ sessionCookie: [] }],
+          params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
+          responses: {
+            200: json('Whatever the upstream returned', { type: 'object' }),
+            ...errors(401, 403, 404, 429),
+            503: problem('The upstream is unreachable or its circuit breaker is open'),
+          },
+        }),
+      },
+      '/v1/audit/{path}': {
+        get: operation({
+          tag: 'Gateway',
+          summary: 'Proxy an audit log call',
+          description: 'Forwarded to the identity provider. Requires `audit:read` there.',
           security: [{ sessionCookie: [] }],
           params: [{ name: 'path', in: 'path', required: true, description: 'An allowlisted path', schema: { type: 'string' } }],
           responses: {

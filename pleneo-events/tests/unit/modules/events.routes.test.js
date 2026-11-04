@@ -34,7 +34,7 @@ describe('POST /events', () => {
   it('requires the publish scope or an admin user', async () => {
     expectProblem(await api().post('/v1/events').send({ type: 'project.created' }), 401, 'AUTHENTICATION_REQUIRED');
     asClient(['jobs:enqueue']);
-    expectProblem(await api().post('/v1/events').send({ type: 'project.created' }), 403, 'INSUFFICIENT_PERMISSIONS');
+    expectProblem(await api().post('/v1/events').send({ type: 'project.created' }), 403, 'INSUFFICIENT_SCOPE');
     asUser();
     expectProblem(await api().post('/v1/events').send({ type: 'project.created' }), 403, 'INSUFFICIENT_PERMISSIONS');
   });
@@ -88,6 +88,6 @@ describe('POST /jobs', () => {
 
   it('rejects unscoped clients', async () => {
     asClient(['events:publish']);
-    expectProblem(await api().post('/v1/jobs').send({ type: 'email.send' }), 403, 'INSUFFICIENT_PERMISSIONS');
+    expectProblem(await api().post('/v1/jobs').send({ type: 'email.send' }), 403, 'INSUFFICIENT_SCOPE');
   });
 });

@@ -5,9 +5,11 @@ import { closePool, healthCheck } from '#infra/database/pool.js';
 import { loadKeys } from '#infra/security/signing-keys.js';
 import { logger } from '#infra/logging/logger.js';
 import { startScheduler, stopScheduler } from '#infra/jobs/scheduler.js';
+import { syncCatalogue } from '#modules/users/catalogue.sync.js';
 
 async function main() {
   await healthCheck();
+  await syncCatalogue();
   await loadKeys(true);
 
   const server = http.createServer(createApp());

@@ -85,6 +85,15 @@ describe('identity hand-off', () => {
     await expect(jwtVerify(assertion, IDENTITY_KEY, { audience: 'pleneo-iot' })).rejects.toThrow();
   });
 
+  it('hands the identity provider the session’s own token, never an assertion', async () => {
+    await signedIn(api().get('/v1/users?limit=20')).expect(200);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${config.AUTH_INTERNAL_URL}/v1/admin/users?limit=20`);
+    expect(init.headers.authorization).toBe(`Bearer ${ACCESS}`);
+    expect(init.headers['x-pleneo-identity']).toBeUndefined();
+  });
+
   it('never forwards a client-supplied identity header or authorization', async () => {
     await signedIn(api().get('/v1/devices'))
       .set('X-Pleneo-Identity', 'forged-assertion')

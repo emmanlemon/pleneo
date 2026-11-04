@@ -18,6 +18,8 @@ export const validateVerifyEmail = body(r.strictObject({ token: r.opaqueToken })
 
 export const validateResetPassword = body(r.strictObject({ token: r.opaqueToken, password: r.password }));
 
+export const validateAcceptInvitation = body(r.strictObject({ token: r.opaqueToken, password: r.password }));
+
 export const validateChangePassword = body(
   r
     .strictObject({ currentPassword: r.rawPassword, newPassword: r.password })

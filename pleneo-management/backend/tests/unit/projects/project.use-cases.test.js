@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { makeUseCases } from '#modules/projects/application/project.use-cases.js';
-import { OTHER_USER_ID, PROJECT_ID, USER_ID } from '../../helpers/principal.js';
+import { ADMIN_PERMISSIONS, OTHER_USER_ID, PROJECT_ID, USER_ID } from '../../helpers/principal.js';
 
-const user = { type: 'user', userId: USER_ID, email: 'user@example.com', roles: ['user'], scopes: [] };
-const admin = { ...user, roles: ['admin', 'user'] };
-const reader = { type: 'client', clientId: 'c1', roles: [], scopes: ['projects:read'] };
-const writer = { type: 'client', clientId: 'c1', roles: [], scopes: ['projects:write'] };
+const user = { type: 'user', userId: USER_ID, email: 'user@example.com', roles: ['user'], permissions: [] };
+const admin = { ...user, roles: ['admin', 'user'], permissions: ADMIN_PERMISSIONS };
+const client = (scopes) => ({ type: 'client', clientId: 'c1', roles: [], scopes, permissions: scopes });
+const reader = client(['projects:read']);
+const writer = client(['projects:write']);
+const publisher = client(['events:publish']);
 
 const seed = (overrides = {}) => ({
   id: PROJECT_ID,
@@ -36,7 +38,11 @@ function harness(rows = [seed()]) {
     summarize: async (filter) => {
       calls.summarize.push(filter);
       return {
-        counts: { active: { count: 3, overdue: 1 }, on_hold: { count: 1, overdue: 1 }, completed: { count: 2, overdue: 0 } },
+        counts: {
+          active: { count: 3, overdue: 1 },
+          on_hold: { count: 1, overdue: 1 },
+          completed: { count: 2, overdue: 0 },
+        },
         dueSoon: [...store.values()],
       };
     },
@@ -79,6 +85,13 @@ describe('listing', () => {
     await h.useCases.list(admin, { limit: 25 });
     await h.useCases.list(reader, { limit: 25 });
     expect(h.calls.list.map((c) => c.ownerId)).toEqual([null, null]);
+  });
+
+  it('refuses a client that holds no read scope instead of listing everything', async () => {
+    await expect(h.useCases.list(publisher, { limit: 25 })).rejects.toMatchObject({ code: 'INSUFFICIENT_SCOPE' });
+    await expect(h.useCases.summary(publisher)).rejects.toMatchObject({ code: 'INSUFFICIENT_SCOPE' });
+    expect(h.calls.list).toHaveLength(0);
+    expect(h.calls.summarize).toHaveLength(0);
   });
 
   it('returns a cursor only when the page is full', async () => {

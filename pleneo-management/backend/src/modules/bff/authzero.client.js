@@ -50,6 +50,7 @@ export const verifyEmail = (payload) => call('/v1/auth/email/verify', { body: pa
 export const resendVerification = (payload) => call('/v1/auth/email/resend', { body: payload });
 export const forgotPassword = (payload) => call('/v1/auth/password/forgot', { body: payload });
 export const resetPassword = (payload) => call('/v1/auth/password/reset', { body: payload });
+export const acceptInvitation = (payload) => call('/v1/auth/invitations/accept', { body: payload });
 export const changePassword = (payload, accessToken) => call('/v1/auth/password/change', { body: payload, token: accessToken });
 
 export function accessTokenExpiry(accessToken) {

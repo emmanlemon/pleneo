@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ADMIN_PERMISSIONS } from '../../helpers/principal.js';
 import { allowedNextStatuses, canTransition, PROJECT_STATUSES } from '#modules/projects/domain/project-status.js';
 import { applyChanges, createProject, isOwnedBy, toResponse } from '#modules/projects/domain/project.js';
 import { assertCanAccess, resolveOwnerId } from '#modules/projects/domain/project-access.js';
@@ -16,9 +17,9 @@ const draft = (overrides = {}) => ({
 });
 const stored = (overrides = {}) => ({ id: 'p1', ...draft(), ...overrides });
 
-const user = (overrides = {}) => ({ type: 'user', userId: OWNER, roles: ['user'], scopes: [], ...overrides });
-const admin = () => user({ roles: ['admin', 'user'] });
-const client = (scopes = []) => ({ type: 'client', clientId: 'c1', roles: [], scopes });
+const user = (overrides = {}) => ({ type: 'user', userId: OWNER, roles: ['user'], permissions: [], ...overrides });
+const admin = () => user({ roles: ['admin', 'user'], permissions: ADMIN_PERMISSIONS });
+const client = (scopes = []) => ({ type: 'client', clientId: 'c1', roles: [], scopes, permissions: scopes });
 
 describe('creation invariants', () => {
   it('accepts a well formed draft', () => {

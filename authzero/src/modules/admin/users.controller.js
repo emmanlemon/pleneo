@@ -1,10 +1,12 @@
 import { DomainErrors } from '#common/errors/domain-errors.js';
 import { requestContext } from '#common/http/request-context.js';
-import { noContent, ok } from '#common/http/respond.js';
+import { created, noContent, ok } from '#common/http/respond.js';
 import { audit } from '#modules/audit/audit.service.js';
 import * as sessions from '#modules/auth/repositories/session.repository.js';
+import { ROLES } from '#modules/users/catalogue.js';
 import * as roles from '#modules/users/role.repository.js';
 import * as security from '#modules/users/user-security.repository.js';
+import * as invitations from '#modules/users/invitation.service.js';
 import * as users from '#modules/users/user.repository.js';
 
 const adminAudit = (req, action, metadata) =>
@@ -21,6 +23,16 @@ const adminAudit = (req, action, metadata) =>
 export const list = async (req, res) => {
   const rows = await users.list(req.query);
   ok(res, { users: rows, nextCursor: rows.length === req.query.limit ? rows.at(-1).id : null });
+};
+
+export const invite = async (req, res) => {
+  const user = await invitations.invite(req.body, req.auth, requestContext(req));
+  created(res, { id: user.id, email: user.email, name: user.name, status: user.status });
+};
+
+export const resendInvitation = async (req, res) => {
+  await invitations.resend(req.params.id, req.auth, requestContext(req));
+  noContent(res);
 };
 
 export const get = async (req, res) => {
@@ -58,7 +70,7 @@ export const grantRole = async (req, res) => {
 };
 
 export const revokeRole = async (req, res) => {
-  if (req.params.id === req.auth.userId && req.params.role === 'admin')
+  if (req.params.id === req.auth.userId && req.params.role === ROLES.ADMIN)
     throw DomainErrors.selfModification('Cannot remove own admin role');
   await roles.remove(req.params.id, req.params.role);
   await sessions.revokeAllForUser(req.params.id, 'roles_changed');

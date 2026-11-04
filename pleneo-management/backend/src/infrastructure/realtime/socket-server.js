@@ -7,7 +7,8 @@ import { resolve as resolveSession } from '#modules/bff/session.service.js';
 const log = logger.child({ component: 'realtime' });
 
 export const userRoom = (userId) => `user:${userId}`;
-export const ADMIN_ROOM = 'role:admin';
+export const ADMIN_ROOM = 'operators';
+const FLEET_PERMISSION = 'devices:read';
 
 let io = null;
 
@@ -36,7 +37,7 @@ export async function authenticateSocket(socket, next) {
     if (!payload) return next(new Error('INVALID_TOKEN'));
     socket.data.userId = resolved.session.user_id;
     socket.data.email = resolved.session.email;
-    socket.data.roles = payload.roles ?? [];
+    socket.data.permissions = payload.permissions ?? [];
     return next();
   }
 
@@ -46,7 +47,7 @@ export async function authenticateSocket(socket, next) {
     if (payload.token_use !== 'user') return next(new Error('USER_TOKEN_REQUIRED'));
     socket.data.userId = payload.sub;
     socket.data.email = payload.email;
-    socket.data.roles = payload.roles ?? [];
+    socket.data.permissions = payload.permissions ?? [];
     next();
   } catch {
     next(new Error('INVALID_TOKEN'));
@@ -66,7 +67,7 @@ export function createSocketServer(httpServer) {
   io.use(authenticateSocket);
 
   io.on('connection', (socket) => {
-    const isAdmin = (socket.data.roles ?? []).includes('admin');
+    const isAdmin = (socket.data.permissions ?? []).includes(FLEET_PERMISSION);
     socket.join(userRoom(socket.data.userId));
     if (isAdmin) socket.join(ADMIN_ROOM);
     log.info({ socketId: socket.id, userId: socket.data.userId, admin: isAdmin }, 'client connected');

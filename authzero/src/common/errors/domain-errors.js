@@ -40,6 +40,7 @@ export const DomainErrors = {
   mfaAlreadyEnabled: () => new ConflictError('MFA already enabled', 'MFA_ALREADY_ENABLED'),
   mfaNotEnabled: () => new ConflictError('MFA not enabled', 'MFA_NOT_ENABLED'),
   alreadyExists: () => new ConflictError('Resource already exists', 'ALREADY_EXISTS'),
+  invitationAccepted: () => new ConflictError('Invitation already accepted', 'INVITATION_ACCEPTED'),
 
   notFound: (entity = 'Resource') => new NotFoundError(`${entity} not found`, 'NOT_FOUND'),
 };

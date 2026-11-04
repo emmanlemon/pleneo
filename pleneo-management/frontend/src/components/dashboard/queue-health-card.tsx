@@ -61,7 +61,11 @@ export function QueueHealthCard() {
       </CardHeader>
       <CardContent className="grid gap-6 md:grid-cols-[1fr_auto]">
         <figure>
-          <div className="flex h-24 items-end gap-1 border-b" role="img" aria-label="Succeeded jobs per 5 minutes, last hour">
+          <div
+            className="flex h-24 items-end gap-1 border-b"
+            role="img"
+            aria-label="Succeeded jobs per 5 minutes, last hour"
+          >
             {buckets.map((b) => (
               <div
                 key={b.start}

@@ -45,6 +45,7 @@ export const forgotPassword = async (req, res) => {
   accepted(res, 'If the account exists, a password reset email has been sent');
 };
 export const resetPassword = async (req, res) => ok(res, await upstream.resetPassword(req.body));
+export const acceptInvitation = async (req, res) => ok(res, await upstream.acceptInvitation(req.body));
 
 export const changePassword = async (req, res) => {
   const result = await upstream.changePassword(req.body, req.bff.accessToken);

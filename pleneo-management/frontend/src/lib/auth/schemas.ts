@@ -29,6 +29,7 @@ export const forgotPasswordSchema = z.object({ email });
 export const resetPasswordSchema = z
   .object({ token: z.string().min(20), password, confirmPassword: z.string() })
   .refine((v) => v.password === v.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] });
+export const acceptInviteSchema = resetPasswordSchema;
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Enter your current password').max(128),
@@ -46,4 +47,5 @@ export type MfaInput = z.infer<typeof mfaSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = Pick<z.infer<typeof resetPasswordSchema>, 'token' | 'password'>;
+export type AcceptInviteInput = ResetPasswordInput;
 export type ChangePasswordInput = Pick<z.infer<typeof changePasswordSchema>, 'currentPassword' | 'newPassword'>;

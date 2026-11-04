@@ -16,7 +16,9 @@ const spec = buildOpenApiDocument();
 
 // The gateway forwards whole path trees, so these are mounted with use() and never
 // appear as discrete Express routes.
-const CATCH_ALL = ['queues', 'devices', 'commands', 'alerts', 'rules'].map((m) => `GET /v1/${m}/:path`);
+const CATCH_ALL = ['queues', 'devices', 'commands', 'alerts', 'rules', 'users', 'roles', 'clients', 'audit'].map(
+  (m) => `GET /v1/${m}/:path`,
+);
 
 describe('OpenAPI document', () => {
   it('documents every route the service actually exposes, and no others', () => {

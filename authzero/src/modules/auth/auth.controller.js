@@ -5,6 +5,7 @@ import { clearRefreshCookie, readRefreshToken, setRefreshCookie } from './refres
 import * as loginService from './services/login.service.js';
 import * as passwordService from './services/password.service.js';
 import * as registrationService from './services/registration.service.js';
+import * as invitationService from '#modules/users/invitation.service.js';
 import * as sessionService from './services/session.service.js';
 
 function sendTokens(res, result) {
@@ -60,6 +61,11 @@ export const resendVerification = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   await passwordService.forgotPassword(req.body, requestContext(req));
   accepted(res, 'If the account exists, a password reset email has been sent');
+};
+
+export const acceptInvitation = async (req, res) => {
+  await invitationService.accept(req.body, requestContext(req));
+  ok(res, { message: 'Account activated. Please sign in.' });
 };
 
 export const resetPassword = async (req, res) => {

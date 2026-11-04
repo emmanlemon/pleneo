@@ -32,6 +32,7 @@ authRouter.post('/email/verify', authLimiter, body(verifyEmailSchema), h(c.verif
 authRouter.post('/email/resend', sensitiveLimiter, body(emailOnlySchema), h(c.resendVerification));
 authRouter.post('/password/forgot', sensitiveLimiter, body(emailOnlySchema), h(c.forgotPassword));
 authRouter.post('/password/reset', authLimiter, body(resetPasswordSchema), h(c.resetPassword));
+authRouter.post('/invitations/accept', authLimiter, body(resetPasswordSchema), h(c.acceptInvitation));
 authRouter.post('/logout', h(c.logout));
 
 authRouter.get('/session', authenticate, requireUser, h(c.session));

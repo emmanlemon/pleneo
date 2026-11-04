@@ -8,6 +8,7 @@ import { devicesRouter } from '#modules/devices/devices.routes.js';
 import { rulesRouter } from '#modules/rules/rules.routes.js';
 import { simulationRouter } from '#modules/simulation/simulation.routes.js';
 import { telemetryRouter } from '#modules/telemetry/telemetry.routes.js';
+import { webhooksRouter } from '#modules/webhooks/events.routes.js';
 import { docsRouter } from './docs.routes.js';
 import * as system from './system.controller.js';
 
@@ -19,6 +20,7 @@ router.get('/ready', h(system.ready));
 router.get('/capabilities', system.capabilities);
 
 router.use('/v1/device', deviceApiRouter);
+router.use('/v1/webhooks', webhooksRouter);
 
 router.use('/v1/devices', authenticate, simulationRouter, deviceCommandsRouter, telemetryRouter, devicesRouter);
 router.use('/v1/commands', authenticate, commandsRouter);

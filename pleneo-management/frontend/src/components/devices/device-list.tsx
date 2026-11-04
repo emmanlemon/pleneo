@@ -4,8 +4,10 @@ import { Loader2, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { errorMessage } from '@/lib/api/problem';
-import { CONNECTION_STATUSES, type ConnectionStatus } from '@/lib/devices/api';
+import { CONNECTION_STATUSES, type ConnectionStatus, type Device } from '@/lib/devices/api';
 import { useDeleteDevice, useDeviceStats, useDevices } from '@/lib/devices/hooks';
+import { useProjectOptions } from '@/lib/projects/hooks';
+import { useConfirm } from '../confirm-dialog';
 import { relativeTime } from '../notifications/notification-bell';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
@@ -21,16 +23,33 @@ const ALL = 'all';
 export const connectionVariant = (status: ConnectionStatus) =>
   status === 'online' ? ('default' as const) : status === 'offline' ? ('destructive' as const) : ('secondary' as const);
 
-export function DeviceList() {
+export function DeviceList({ projectId }: { projectId?: string }) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | typeof ALL>(ALL);
+  const [project, setProject] = useState<string>(ALL);
   const [search, setSearch] = useState('');
+  const scopedProject = projectId ?? (project === ALL ? undefined : project);
   const devices = useDevices({
     limit: 50,
+    projectId: scopedProject,
     connectionStatus: connectionStatus === ALL ? undefined : connectionStatus,
     search: search || undefined,
   });
-  const stats = useDeviceStats();
+  const stats = useDeviceStats(projectId ? { projectId } : {});
+  const projects = useProjectOptions();
   const remove = useDeleteDevice();
+  const confirm = useConfirm();
+  const projectName = (id: string | null) => projects.data?.find((p) => p.id === id)?.name;
+  const registerHref = projectId ? `/devices/new?projectId=${projectId}` : '/devices/new';
+
+  const decommission = async (device: Device) => {
+    const ok = await confirm({
+      title: `Decommission "${device.name}"?`,
+      description: 'Its credentials are revoked immediately and it stops reporting. Telemetry history is kept.',
+      confirmLabel: 'Decommission',
+      destructive: true,
+    });
+    if (ok) remove.mutate(device.id);
+  };
 
   return (
     <div className="space-y-4">
@@ -54,6 +73,21 @@ export function DeviceList() {
           className="max-w-xs"
           aria-label="Search devices"
         />
+        {!projectId && (
+          <Select value={project} onValueChange={setProject}>
+            <SelectTrigger className="w-48" aria-label="Filter by project">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All projects</SelectItem>
+              {projects.data?.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select
           value={connectionStatus}
           onValueChange={(value) => setConnectionStatus(value as ConnectionStatus | typeof ALL)}
@@ -71,7 +105,7 @@ export function DeviceList() {
           </SelectContent>
         </Select>
         <Button asChild className="ml-auto">
-          <Link href="/devices/new">
+          <Link href={registerHref}>
             <Plus /> Register device
           </Link>
         </Button>
@@ -86,13 +120,16 @@ export function DeviceList() {
       {devices.isPending ? (
         <Skeleton className="h-40 w-full" role="status" aria-label="Loading devices" />
       ) : devices.data?.devices.length === 0 ? (
-        <p className="text-muted-foreground rounded-md border border-dashed p-8 text-center text-sm">No devices yet.</p>
+        <p className="text-muted-foreground rounded-md border border-dashed p-8 text-center text-sm">
+          {projectId ? 'No devices in this project yet.' : 'No devices yet.'}
+        </p>
       ) : (
         <div className="bg-card rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Device</TableHead>
+                {!projectId && <TableHead>Project</TableHead>}
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Connection</TableHead>
@@ -109,6 +146,17 @@ export function DeviceList() {
                     </Link>
                     <div className="text-muted-foreground text-xs">{device.external_id}</div>
                   </TableCell>
+                  {!projectId && (
+                    <TableCell className="text-sm">
+                      {device.project_id ? (
+                        <Link href={`/projects/${device.project_id}`} className="hover:underline">
+                          {projectName(device.project_id) ?? 'Project'}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">Unassigned</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="text-sm">{device.device_type_name}</TableCell>
                   <TableCell>
                     <Badge variant={device.status === 'active' ? 'secondary' : 'outline'}>{device.status}</Badge>
@@ -125,7 +173,7 @@ export function DeviceList() {
                       size="icon"
                       aria-label={`Delete ${device.name}`}
                       disabled={remove.isPending && remove.variables === device.id}
-                      onClick={() => window.confirm(`Decommission "${device.name}"?`) && remove.mutate(device.id)}
+                      onClick={() => decommission(device)}
                     >
                       {remove.isPending && remove.variables === device.id ? (
                         <Loader2 className="animate-spin" />

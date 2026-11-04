@@ -25,6 +25,23 @@ const eventsRoutes = [
   route('PATCH', '/queues/subscriptions/:id'),
 ];
 
+const accessRoutes = [
+  route('GET', '/users'),
+  route('POST', '/users'),
+  route('GET', '/users/:id'),
+  route('PATCH', '/users/:id'),
+  route('POST', '/users/:id/unlock'),
+  route('POST', '/users/:id/revoke-sessions'),
+  route('POST', '/users/:id/invitations'),
+  route('POST', '/users/:id/roles'),
+  route('DELETE', '/users/:id/roles/:role'),
+  route('GET', '/roles'),
+  route('GET', '/clients'),
+  route('POST', '/clients'),
+  route('DELETE', '/clients/:id'),
+  route('GET', '/audit'),
+];
+
 const iotRoutes = [
   route('GET', '/devices/stats'),
   route('GET', '/devices/types'),
@@ -53,9 +70,18 @@ const iotRoutes = [
 /**
  * `routes` and `mounts` are what the console sees, under `/v1`. Whether a path is served here
  * or proxied is not its business, so nothing in them names an upstream service. `rewrite` maps
- * a console path onto the upstream's own surface when the two differ.
+ * a console path onto the upstream's own surface when the two differ. `bearer` upstreams verify
+ * the user's own access token instead of a gateway identity assertion.
  */
 export const UPSTREAMS = {
+  access: {
+    audience: 'authzero',
+    baseUrl: () => config.AUTH_INTERNAL_URL,
+    bearer: true,
+    mounts: ['/users', '/roles', '/clients', '/audit'],
+    rewrite: (path) => `/v1/admin${path}`,
+    routes: accessRoutes,
+  },
   events: {
     audience: 'pleneo-events',
     baseUrl: () => config.EVENTS_URL,

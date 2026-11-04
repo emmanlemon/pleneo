@@ -19,6 +19,8 @@ authRouter.post('/logout-all', protectedRoute, h(c.logoutAll));
 authRouter.post('/email/verify', authLimiter, v.validateVerifyEmail, h(c.verifyEmail));
 authRouter.post('/email/resend', sensitiveLimiter, v.validateEmailOnly, h(c.resendVerification));
 
+authRouter.post('/invitations/accept', authLimiter, v.validateAcceptInvitation, h(c.acceptInvitation));
+
 authRouter.post('/password/forgot', sensitiveLimiter, v.validateEmailOnly, h(c.forgotPassword));
 authRouter.post('/password/reset', authLimiter, v.validateResetPassword, h(c.resetPassword));
 authRouter.post('/password/change', protectedRoute, authLimiter, v.validateChangePassword, h(c.changePassword));

@@ -22,16 +22,20 @@ export const deviceStatus = z.enum(['provisioning', 'active', 'disabled']);
 export const connectionStatus = z.enum(['online', 'offline', 'unknown']);
 
 export const deviceListQuery = r.pagination(200).extend({
+  projectId: r.uuid.optional(),
   status: deviceStatus.optional(),
   connectionStatus: connectionStatus.optional(),
   deviceTypeId: r.uuid.optional(),
   search: r.searchTerm.optional(),
 });
 
+export const deviceStatsQuery = r.strictObject({ projectId: r.uuid.optional() });
+
 export const registerDeviceSchema = r.strictObject({
   externalId,
   name: r.name,
   deviceTypeId: r.uuid,
+  projectId: r.uuid,
   ownerId: r.uuid.optional(),
   site: z.string().trim().max(120).optional(),
   metadata: jsonObject.default({}),
@@ -40,6 +44,7 @@ export const registerDeviceSchema = r.strictObject({
 export const updateDeviceSchema = r
   .strictObject({
     name: r.name.optional(),
+    projectId: r.uuid.optional(),
     site: z.string().trim().max(120).optional(),
     metadata: jsonObject.optional(),
     firmware: z.string().trim().max(60).optional(),
@@ -73,6 +78,7 @@ export const createDeviceTypeSchema = r.strictObject({
 export const validateId = params(idParams);
 export const validateCredentialId = params(idParams.extend({ credentialId: r.uuid }));
 export const validateDeviceList = query(deviceListQuery);
+export const validateDeviceStats = query(deviceStatsQuery);
 export const validateRegister = body(registerDeviceSchema);
 export const validateUpdate = validate({ params: idParams, body: updateDeviceSchema });
 export const validateRotateCredential = validate({ params: idParams, body: rotateCredentialSchema });

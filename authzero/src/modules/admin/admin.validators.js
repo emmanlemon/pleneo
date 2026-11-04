@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import * as r from '#common/validation/rules.js';
+import { isPermission } from '#modules/users/catalogue.js';
 import { body, params, query, validate } from '#common/validation/validator.js';
 
 const idParams = z.object({ id: r.uuid });
@@ -15,12 +16,19 @@ export const validateUserStatus = validate({
   body: r.strictObject({ status: z.enum(['active', 'disabled']) }),
 });
 
+export const validateInviteUser = body(
+  r.strictObject({ email: r.email, name: r.displayName.optional(), roles: z.array(r.roleName).max(10).default([]) }),
+);
+
 export const validateGrantRole = validate({ params: idParams, body: r.strictObject({ role: r.roleName }) });
 
 export const validateRevokeRole = params(idParams.extend({ role: r.roleName }));
 
 export const validateCreateClient = body(
-  r.strictObject({ name: r.displayName, scopes: z.array(r.scope).max(50).default([]) }),
+  r.strictObject({
+    name: r.displayName,
+    scopes: z.array(r.scope.refine(isPermission, 'Unknown scope')).max(50).default([]),
+  }),
 );
 
 export const validateAuditQuery = query(

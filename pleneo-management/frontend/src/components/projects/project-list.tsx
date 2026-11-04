@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { errorMessage } from '@/lib/api/problem';
 import { useDeleteProject, useProjects } from '@/lib/projects/hooks';
-import { PROJECT_STATUSES, STATUS_LABELS, type ProjectStatus } from '@/lib/projects/schemas';
+import { PROJECT_STATUSES, STATUS_LABELS, type Project, type ProjectStatus } from '@/lib/projects/schemas';
+import { useConfirm } from '../confirm-dialog';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -20,6 +21,17 @@ export function ProjectList() {
   const [search, setSearch] = useState('');
   const projects = useProjects({ limit: 50, status: status === ALL ? undefined : status, search: search || undefined });
   const remove = useDeleteProject();
+  const confirm = useConfirm();
+
+  const destroy = async (project: Project) => {
+    const ok = await confirm({
+      title: `Delete "${project.name}"?`,
+      description: 'Devices assigned to this project are kept and become unassigned.',
+      confirmLabel: 'Delete project',
+      destructive: true,
+    });
+    if (ok) remove.mutate(project.id);
+  };
 
   return (
     <div className="space-y-4">
@@ -85,7 +97,7 @@ export function ProjectList() {
                 size="icon"
                 aria-label={`Delete ${project.name}`}
                 disabled={remove.isPending && remove.variables === project.id}
-                onClick={() => window.confirm(`Delete "${project.name}"?`) && remove.mutate(project.id)}
+                onClick={() => destroy(project)}
               >
                 {remove.isPending && remove.variables === project.id ? (
                   <Loader2 className="animate-spin" />

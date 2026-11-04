@@ -7,11 +7,15 @@ export const DomainErrors = {
   deviceAuthRequired: () => new UnauthorizedError('Device credentials required', 'DEVICE_AUTH_REQUIRED'),
   invalidDeviceCredential: () => new UnauthorizedError('Invalid device credentials', 'INVALID_DEVICE_CREDENTIAL'),
   deviceCredentialExpired: () => new UnauthorizedError('Device credential expired', 'DEVICE_CREDENTIAL_EXPIRED'),
+  invalidSignature: () => new UnauthorizedError('Invalid webhook signature', 'INVALID_SIGNATURE'),
+  staleSignature: () => new UnauthorizedError('Webhook timestamp outside tolerance', 'STALE_SIGNATURE'),
+  webhooksNotConfigured: () => new ForbiddenError('Inbound webhooks are not configured', 'WEBHOOKS_NOT_CONFIGURED'),
 
   userTokenRequired: () => new ForbiddenError('User token required', 'USER_TOKEN_REQUIRED'),
   insufficientPermissions: () => new ForbiddenError('Insufficient permissions', 'INSUFFICIENT_PERMISSIONS'),
   insufficientScope: () => new ForbiddenError('Insufficient scope', 'INSUFFICIENT_SCOPE'),
-  notOwner: () => new ForbiddenError('You do not have access to this device', 'NOT_DEVICE_OWNER'),
+  notOwner: () => new ForbiddenError('You do not have access to this device', 'NOT_RESOURCE_OWNER'),
+  ownerRequired: () => new ForbiddenError('An owner must be named for this device', 'OWNER_REQUIRED'),
   deviceDisabled: () => new ForbiddenError('Device is disabled', 'DEVICE_DISABLED'),
 
   malformedJson: () => new BadRequestError('Malformed JSON body', 'MALFORMED_JSON'),

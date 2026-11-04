@@ -6,6 +6,7 @@ process.env.DATABASE_URL ??= 'postgres://authzero:authzero@localhost:5432/pleneo
 process.env.AUTH_ISSUER ??= 'http://localhost:4000';
 process.env.AUTH_AUDIENCE ??= 'pleneo';
 process.env.DEVICE_SECRET_KEY = 'a3f1c9e2b7d4085f6e1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70';
+process.env.EVENTS_WEBHOOK_SECRET = 'iot-webhook-secret-with-at-least-32-chars';
 process.env.INGEST_MAX_BATCH = '500';
 process.env.INGEST_MAX_SKEW_MINUTES = '60';
 process.env.INGEST_MAX_BACKFILL_DAYS = '30';

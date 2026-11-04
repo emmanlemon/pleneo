@@ -38,10 +38,36 @@ describe('route allowlist', () => {
   it('binds each upstream to its own audience', () => {
     expect(UPSTREAMS.events.audience).toBe('pleneo-events');
     expect(UPSTREAMS.iot.audience).toBe('pleneo-iot');
+    expect(UPSTREAMS.access.audience).toBe('authzero');
+  });
+
+  it('forwards the user token itself to the identity provider, which owns the permission checks', () => {
+    expect(UPSTREAMS.access.bearer).toBe(true);
+    expect(UPSTREAMS.events.bearer).toBeUndefined();
+    expect(UPSTREAMS.access.rewrite('/users/abc/roles')).toBe('/v1/admin/users/abc/roles');
+    expect(matchRoute('access', 'DELETE', '/users/abc/roles/admin').path).toBe('/users/:id/roles/:role');
+    expect(matchRoute('access', 'POST', '/keys/rotate')).toBeNull();
+    expect(matchRoute('access', 'GET', '/users/abc/sessions')).toBeNull();
   });
 });
 
 const CONSOLE_SURFACE = {
+  access: [
+    'GET /users',
+    'POST /users',
+    'GET /users/:id',
+    'PATCH /users/:id',
+    'POST /users/:id/unlock',
+    'POST /users/:id/revoke-sessions',
+    'POST /users/:id/invitations',
+    'POST /users/:id/roles',
+    'DELETE /users/:id/roles/:role',
+    'GET /roles',
+    'GET /clients',
+    'POST /clients',
+    'DELETE /clients/:id',
+    'GET /audit',
+  ],
   events: [
     'GET /queues/stats',
     'GET /queues/jobs',

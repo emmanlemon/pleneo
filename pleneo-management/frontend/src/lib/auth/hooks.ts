@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/problem';
 import { authApi, type LoginResponse, type Session } from './api';
 import type {
+  AcceptInviteInput,
   ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
@@ -44,7 +45,10 @@ export function useLogin() {
 
 export function useLoginMfa() {
   const establish = useEstablishSession();
-  return useMutation({ mutationFn: (input: MfaInput) => authApi.loginMfa(input), onSuccess: (data) => establish(data.user) });
+  return useMutation({
+    mutationFn: (input: MfaInput) => authApi.loginMfa(input),
+    onSuccess: (data) => establish(data.user),
+  });
 }
 
 export function useLogout() {
@@ -62,7 +66,13 @@ export function useLogout() {
 
 export const useRegister = () => useMutation({ mutationFn: (input: RegisterInput) => authApi.register(input) });
 export const useVerifyEmail = () => useMutation({ mutationFn: (token: string) => authApi.verifyEmail(token) });
-export const useResendVerification = () => useMutation({ mutationFn: (email: string) => authApi.resendVerification(email) });
-export const useForgotPassword = () => useMutation({ mutationFn: (input: ForgotPasswordInput) => authApi.forgotPassword(input) });
-export const useResetPassword = () => useMutation({ mutationFn: (input: ResetPasswordInput) => authApi.resetPassword(input) });
-export const useChangePassword = () => useMutation({ mutationFn: (input: ChangePasswordInput) => authApi.changePassword(input) });
+export const useResendVerification = () =>
+  useMutation({ mutationFn: (email: string) => authApi.resendVerification(email) });
+export const useForgotPassword = () =>
+  useMutation({ mutationFn: (input: ForgotPasswordInput) => authApi.forgotPassword(input) });
+export const useResetPassword = () =>
+  useMutation({ mutationFn: (input: ResetPasswordInput) => authApi.resetPassword(input) });
+export const useAcceptInvitation = () =>
+  useMutation({ mutationFn: (input: AcceptInviteInput) => authApi.acceptInvitation(input) });
+export const useChangePassword = () =>
+  useMutation({ mutationFn: (input: ChangePasswordInput) => authApi.changePassword(input) });

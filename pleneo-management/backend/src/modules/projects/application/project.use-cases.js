@@ -74,7 +74,13 @@ export const makeUseCases = ({ repository, events, unitOfWork }) => {
         if (!project) throw DomainErrors.notFound('Project');
         const type = statusChanged ? 'project.status_changed' : 'project.updated';
         await events.record(
-          { type, project, auth, extra: { changes, previousStatus: current.status }, key: EVENT_KEYS.mutated(type, project) },
+          {
+            type,
+            project,
+            auth,
+            extra: { changes, previousStatus: current.status },
+            key: EVENT_KEYS.mutated(type, project),
+          },
           tx,
         );
         return project;

@@ -26,6 +26,15 @@ const templates = {
       'If you did not create an account, you can ignore this message.',
     ]),
   }),
+  'auth.invite': (d) => ({
+    subject: 'You have been invited to Pleneo',
+    ...layout('Join Pleneo', [
+      `Hi${d.name ? ` ${d.name}` : ''}, ${d.invitedBy ?? 'an administrator'} invited you to the Pleneo console.`,
+      'Use the link below to choose your password and activate your account.',
+      link('/accept-invite', { token: d.inviteToken }),
+      'The link is single-use and expires in a few days. If you were not expecting it, ignore this message.',
+    ]),
+  }),
   'auth.reset-password': (d) => ({
     subject: 'Reset your Pleneo password',
     ...layout('Reset your password', [

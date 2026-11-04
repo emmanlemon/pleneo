@@ -13,27 +13,23 @@ function extractBearer(req) {
   return scheme?.toLowerCase() === 'bearer' && token && !extra ? token : null;
 }
 
-const toPrincipal = (payload) =>
-  payload.token_use === 'client'
-    ? {
-        type: 'client',
-        clientId: payload.sub,
-        scopes: payload.scope?.split(' ') ?? [],
-        roles: [],
-        permissions: [],
-        jti: payload.jti,
-      }
-    : {
-        type: 'user',
-        userId: payload.sub,
-        sessionId: payload.sid,
-        email: payload.email,
-        roles: payload.roles ?? [],
-        permissions: payload.permissions ?? [],
-        amr: payload.amr ?? [],
-        scopes: [],
-        jti: payload.jti,
-      };
+function toPrincipal(payload) {
+  if (payload.token_use === 'client') {
+    const scopes = payload.scope ? payload.scope.split(' ') : [];
+    return { type: 'client', clientId: payload.sub, scopes, permissions: scopes, roles: [], jti: payload.jti };
+  }
+  return {
+    type: 'user',
+    userId: payload.sub,
+    sessionId: payload.sid,
+    email: payload.email,
+    roles: payload.roles ?? [],
+    permissions: payload.permissions ?? [],
+    amr: payload.amr ?? [],
+    scopes: [],
+    jti: payload.jti,
+  };
+}
 
 async function fromBearer(req, token) {
   const payload = await verifyAccessToken(token);
@@ -46,8 +42,7 @@ async function fromSession(req) {
   if (!resolved) throw DomainErrors.sessionRequired();
   if (MUTATING.has(req.method)) assertCsrf(resolved.session, readCsrfToken(req));
 
-  const payload = await verifyAccessToken(resolved.accessToken);
-  req.auth = toPrincipal(payload);
+  req.auth = toPrincipal(await verifyAccessToken(resolved.accessToken));
   req.bff = { sessionId: resolved.session.id, accessToken: resolved.accessToken, csrfHash: resolved.session.csrf_hash };
 }
 

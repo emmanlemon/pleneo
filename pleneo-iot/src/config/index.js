@@ -60,6 +60,7 @@ const schema = z.object({
   EVENTS_URL: optionalString(z.string().url()),
   EVENTS_CLIENT_ID: optionalString(z.string().min(1)),
   EVENTS_CLIENT_SECRET: optionalString(z.string().min(1)),
+  EVENTS_WEBHOOK_SECRET: optionalString(z.string().min(32)),
   OUTBOX_ENABLED: bool('true'),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(500).default(5000),
 

@@ -18,6 +18,8 @@ export const asUser = (overrides = {}) =>
     jti: 'j',
     ...overrides,
   });
-export const asAdmin = () => asUser({ roles: ['admin', 'user'] });
+export const ADMIN_PERMISSIONS = ['events:publish', 'jobs:enqueue', 'queues:manage'];
+
+export const asAdmin = () => asUser({ roles: ['admin', 'user'], permissions: ADMIN_PERMISSIONS });
 export const asClient = (scopes = []) =>
-  (principal.current = { type: 'client', clientId: CLIENT_ID, scopes, roles: [], permissions: [], jti: 'jc' });
+  (principal.current = { type: 'client', clientId: CLIENT_ID, scopes, roles: [], permissions: scopes, jti: 'jc' });

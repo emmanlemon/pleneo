@@ -19,6 +19,8 @@ export const breakers = new Map(
   ]),
 );
 
+const bearerOf = (req) => req.get('authorization')?.replace(/^bearer\s+/i, '') ?? null;
+
 const jitteredBackoff = (attempt) => Math.round(2 ** attempt * 100 * (0.5 + Math.random()));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -68,11 +70,12 @@ export function createGateway(name, mount = '') {
       throw DomainErrors.upstreamUnavailable(name);
     }
 
-    const identity = identityEnabled() ? await mintIdentity(req.auth, upstream.audience, req.id) : null;
+    const identity =
+      identityEnabled() && !upstream.bearer ? await mintIdentity(req.auth, upstream.audience, req.id) : null;
     const body = BODYLESS.has(req.method) ? undefined : JSON.stringify(req.body ?? {});
     const headers = upstreamHeaders(req, {
       identity,
-      accessToken: identity ? null : req.bff?.accessToken,
+      accessToken: identity ? null : (req.bff?.accessToken ?? bearerOf(req)),
       hasBody: body !== undefined,
     });
     const target = `${upstream.baseUrl()}${upstreamPathFor(name, pathname)}${query ? `?${query}` : ''}`;

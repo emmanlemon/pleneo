@@ -69,7 +69,7 @@ describe('starting a simulation', () => {
     asUser();
     devices.findById.mockResolvedValue(device({ owner_id: 'someone-else' }));
     await expect(service.startSimulation(principal.current, DEVICE_ID, {})).rejects.toMatchObject({
-      code: 'NOT_DEVICE_OWNER',
+      code: 'NOT_RESOURCE_OWNER',
     });
   });
 

@@ -20,6 +20,7 @@ const emailJob = (template) => async (event, client) => {
 const handlers = {
   'auth.user.registered': [emailJob('auth.verify-email')],
   'auth.user.email_verification_requested': [emailJob('auth.verify-email')],
+  'auth.user.invited': [emailJob('auth.invite')],
   'auth.user.password_reset_requested': [emailJob('auth.reset-password')],
   'auth.user.password_changed': [emailJob('auth.password-changed')],
   'auth.user.locked': [emailJob('auth.account-locked')],

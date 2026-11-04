@@ -64,6 +64,8 @@ const bodies = {
   createClient: r.strictObject({ name: r.displayName, scopes: z.array(r.scope).max(50).default([]) }),
   grantRole: r.strictObject({ role: r.roleName }),
   setStatus: r.strictObject({ status: z.enum(['active', 'disabled']) }),
+  inviteUser: r.strictObject({ email: r.email, name: r.displayName.optional(), roles: z.array(r.roleName).max(10).default([]) }),
+  acceptInvitation: r.strictObject({ token: r.opaqueToken, password: r.password }),
 };
 
 export function buildOpenApiDocument() {
@@ -151,7 +153,7 @@ export function buildOpenApiDocument() {
             email: { type: 'string', format: 'email' },
             email_verified: { type: 'boolean' },
             name: { type: ['string', 'null'] },
-            status: { type: 'string', enum: ['active', 'disabled'] },
+            status: { type: 'string', enum: ['invited', 'active', 'disabled'] },
             mfa_enabled: { type: 'boolean' },
             roles: { type: 'array', items: { type: 'string' } },
             permissions: { type: 'array', items: { type: 'string' } },
@@ -310,6 +312,17 @@ export function buildOpenApiDocument() {
           security: [],
           body: jsonBody(bodies.emailOnly),
           responses: { 202: accepted('Accepted whether or not the account exists'), ...errors(400, 429) },
+        }),
+      },
+
+      '/v1/auth/invitations/accept': {
+        post: operation({
+          tag: 'Registration',
+          summary: 'Accept an invitation',
+          description: 'Consumes the single-use invitation token, sets the first password and activates the account.',
+          security: [],
+          body: jsonBody(bodies.acceptInvitation),
+          responses: { 200: accepted('Account activated'), ...errors(400, 401, 429) },
         }),
       },
 
@@ -550,6 +563,14 @@ export function buildOpenApiDocument() {
             ...errors(400, 401, 403),
           },
         }),
+        post: operation({
+          tag: 'Administration',
+          summary: 'Invite a user',
+          description:
+            'Requires `users:write`. Creates the account in the `invited` state with the given roles and emails a single-use link to set the first password.',
+          body: jsonBody(bodies.inviteUser),
+          responses: { 201: json('Invited user', ref('User')), ...errors(400, 401, 403, 404, 409) },
+        }),
       },
       '/v1/admin/users/{id}': {
         get: operation({
@@ -582,6 +603,15 @@ export function buildOpenApiDocument() {
           summary: 'Revoke every session for a user',
           params: [pathParam('id', 'User id')],
           responses: { 204: { description: 'Revoked' }, ...errors(400, 401, 403, 404) },
+        }),
+      },
+      '/v1/admin/users/{id}/invitations': {
+        post: operation({
+          tag: 'Administration',
+          summary: 'Resend an invitation',
+          description: 'Issues a fresh link for a user still in the `invited` state.',
+          params: [pathParam('id', 'User id')],
+          responses: { 204: { description: 'Sent' }, ...errors(400, 401, 403, 404, 409) },
         }),
       },
       '/v1/admin/users/{id}/roles': {

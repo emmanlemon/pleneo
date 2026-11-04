@@ -218,4 +218,13 @@ describe('anonymous account routes', () => {
       .send({ token: 't'.repeat(40), password: 'Correct-Horse-9' });
     expect(reset.status).toBe(200);
   });
+
+  it('activates an invited account through the gateway', async () => {
+    upstream.acceptInvitation.mockResolvedValue({ message: 'Account activated' });
+    const res = await api()
+      .post('/v1/auth/invitations/accept')
+      .send({ token: 't'.repeat(40), password: 'Correct-Horse-9' });
+    expect(res.status).toBe(200);
+    expect(upstream.acceptInvitation).toHaveBeenCalledWith({ token: 't'.repeat(40), password: 'Correct-Horse-9' });
+  });
 });

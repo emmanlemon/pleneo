@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { notify } from '@/lib/toast';
 import { projectsApi, type ProjectListParams } from './api';
 import type { ProjectPayload } from './schemas';
 
@@ -9,12 +10,30 @@ export const projectKeys = {
   list: (params: ProjectListParams) => ['projects', 'list', params] as const,
   detail: (id: string) => ['projects', 'detail', id] as const,
   summary: ['projects', 'summary'] as const,
+  options: ['projects', 'options'] as const,
 };
+
+const PAGE = 100;
+const MAX_OPTIONS = 1000;
+
+async function loadOptions() {
+  const projects = [];
+  let cursor: string | undefined;
+  do {
+    const page = await projectsApi.list({ limit: PAGE, cursor });
+    projects.push(...page.projects);
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor && projects.length < MAX_OPTIONS);
+  return projects;
+}
 
 export const useProjectSummary = () => useQuery({ queryKey: projectKeys.summary, queryFn: projectsApi.summary });
 
 export const useProjects = (params: ProjectListParams = {}) =>
   useQuery({ queryKey: projectKeys.list(params), queryFn: () => projectsApi.list(params) });
+
+export const useProjectOptions = () =>
+  useQuery({ queryKey: projectKeys.options, queryFn: loadOptions, staleTime: 60_000 });
 
 export const useProject = (id: string) =>
   useQuery({ queryKey: projectKeys.detail(id), queryFn: () => projectsApi.get(id), enabled: Boolean(id) });
@@ -23,7 +42,10 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ProjectPayload) => projectsApi.create(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+    onSuccess: (project) => {
+      notify.success(`Project "${project.name}" created`);
+      return queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
   });
 }
 
@@ -33,6 +55,7 @@ export function useUpdateProject(id: string) {
     mutationFn: (input: Partial<ProjectPayload>) => projectsApi.update(id, input),
     onSuccess: (project) => {
       queryClient.setQueryData(projectKeys.detail(id), project);
+      notify.success('Project saved');
       return queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
@@ -42,6 +65,10 @@ export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => projectsApi.remove(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+    onSuccess: () => {
+      notify.success('Project deleted');
+      return queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+    onError: notify.error,
   });
 }

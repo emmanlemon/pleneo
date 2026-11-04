@@ -1,18 +1,18 @@
 import { Router } from 'express';
 import { asyncHandler as h } from '#common/http/async-handler.js';
-import { requireAny, requireRole, requireScope } from '#common/middleware/authorize.js';
+import { requirePermission } from '#common/middleware/authorize.js';
 import { writeLimiter } from '#common/middleware/rate-limit.js';
 import * as c from './devices.controller.js';
 import * as v from './devices.validators.js';
 
 export const devicesRouter = Router();
 
-const manageTypes = requireAny(requireRole('admin'), requireScope('devices:write'));
+const manageTypes = requirePermission('devices:manage');
 
 devicesRouter.get('/types', h(c.listTypes));
 devicesRouter.post('/types', manageTypes, writeLimiter, v.validateCreateDeviceType, h(c.createType));
 
-devicesRouter.get('/stats', h(c.stats));
+devicesRouter.get('/stats', v.validateDeviceStats, h(c.stats));
 devicesRouter.get('/', v.validateDeviceList, h(c.list));
 devicesRouter.post('/', writeLimiter, v.validateRegister, h(c.register));
 devicesRouter.get('/:id', v.validateId, h(c.get));

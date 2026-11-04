@@ -35,10 +35,10 @@ describe('admin authorization', () => {
     anonymous();
     expectProblem(await api().get('/v1/admin/stats'), 401, 'AUTHENTICATION_REQUIRED');
     asUser();
-    expectProblem(await api().get('/v1/admin/stats'), 403, 'INSUFFICIENT_SCOPE');
+    expectProblem(await api().get('/v1/admin/stats'), 403, 'INSUFFICIENT_PERMISSIONS');
     asClient(['events:publish']);
     expectProblem(await api().get('/v1/admin/stats'), 403, 'INSUFFICIENT_SCOPE');
-    asClient(['events:manage']);
+    asClient(['queues:manage']);
     stats.overview.mockResolvedValue({ queues: {}, throughput: [], types: [] });
     expect((await api().get('/v1/admin/stats')).status).toBe(200);
   });

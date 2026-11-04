@@ -29,9 +29,7 @@ export function StatTile({ label, value, detail, tone = 'neutral', href, loading
     <Card className={cn('h-full gap-3', href && 'hover:border-foreground/20 transition-colors')}>
       <CardHeader>
         <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-3xl font-semibold">
-          {loading ? <Skeleton className="h-8 w-20" /> : value}
-        </CardTitle>
+        <CardTitle className="text-3xl font-semibold">{loading ? <Skeleton className="h-8 w-20" /> : value}</CardTitle>
       </CardHeader>
       <CardContent className={cn('flex items-center gap-1.5 text-xs [&>svg]:size-3.5', className)}>
         {loading ? (

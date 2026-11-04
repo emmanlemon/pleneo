@@ -133,6 +133,29 @@ services:
         '${MANAGEMENT_WEBHOOK_SECRET}',
       ]
 
+  iot-events-seed:
+    build: ./pleneo-events
+    environment:
+      <<: [*db, *auth]
+      DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/pleneo_events
+      AUTHZERO_WEBHOOK_SECRET: ${AUTHZERO_WEBHOOK_SECRET}
+      SECRETS_ENCRYPTION_KEY: ${EVENTS_SECRETS_KEY}
+      APP_BASE_URL: http://localhost:3000
+      EMAIL_FROM: ${EMAIL_FROM:-Pleneo <no-reply@pleneo.local>}
+    depends_on:
+      events:
+        condition: service_healthy
+    restart: 'no'
+    command:
+      [
+        'node',
+        'scripts/seed-subscription.js',
+        'pleneo-iot',
+        'http://iot:4300/v1/webhooks/events',
+        'project.*',
+        '${IOT_WEBHOOK_SECRET}',
+      ]
+
   backend:
     build:
       context: ./pleneo-management
@@ -173,6 +196,7 @@ services:
       PORT: 4300
       DATABASE_URL: postgres://pleneo:${POSTGRES_PASSWORD}@postgres:5432/pleneo_iot
       DEVICE_SECRET_KEY: ${IOT_DEVICE_SECRET_KEY}
+      EVENTS_WEBHOOK_SECRET: ${IOT_WEBHOOK_SECRET}
       EVENTS_URL: http://events:4200
       EVENTS_CLIENT_ID: ${IOT_CLIENT_ID}
       EVENTS_CLIENT_SECRET: ${IOT_CLIENT_SECRET}

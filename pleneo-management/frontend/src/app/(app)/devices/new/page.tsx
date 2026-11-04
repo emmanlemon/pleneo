@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import { RegisterDeviceForm } from '@/components/devices/register-device-form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { RegisteredDevice } from '@/lib/devices/api';
 
-export default function NewDevicePage() {
+function NewDevice() {
+  const projectId = useSearchParams().get('projectId') ?? undefined;
   const [registered, setRegistered] = useState<RegisteredDevice | null>(null);
 
   if (registered) {
@@ -30,7 +32,9 @@ export default function NewDevicePage() {
             <Link href={`/devices/${registered.id}`}>Open device</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/devices">Back to devices</Link>
+            <Link href={projectId ? `/projects/${projectId}` : '/devices'}>
+              {projectId ? 'Back to project' : 'Back to devices'}
+            </Link>
           </Button>
           <Button variant="ghost" onClick={() => setRegistered(null)}>
             Register another
@@ -48,7 +52,15 @@ export default function NewDevicePage() {
           Registration returns a one-time claim code the device exchanges for its own credentials.
         </p>
       </div>
-      <RegisterDeviceForm onRegistered={setRegistered} />
+      <RegisterDeviceForm defaultProjectId={projectId} onRegistered={setRegistered} />
     </div>
+  );
+}
+
+export default function NewDevicePage() {
+  return (
+    <Suspense>
+      <NewDevice />
+    </Suspense>
   );
 }

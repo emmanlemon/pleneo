@@ -7,6 +7,7 @@ import {
   asUser,
   DEVICE_ID,
   DEVICE_TYPE_ID,
+  PROJECT_ID,
   RULE_ID,
   USER_ID,
 } from '../../helpers/fixtures.js';
@@ -74,15 +75,33 @@ describe('/v1/devices', () => {
     devices.registerDevice.mockResolvedValue({ id: DEVICE_ID, claimCode: 'ABCD-EFGH-IJKL' });
     const res = await api()
       .post('/v1/devices')
-      .send({ externalId: 'sensor-001', name: 'Cold room', deviceTypeId: DEVICE_TYPE_ID });
+      .send({ externalId: 'sensor-001', name: 'Cold room', deviceTypeId: DEVICE_TYPE_ID, projectId: PROJECT_ID });
     expect(res.status).toBe(201);
     expect(res.body.claimCode).toBe('ABCD-EFGH-IJKL');
     expect(devices.registerDevice).toHaveBeenCalledWith(expect.anything(), {
       externalId: 'sensor-001',
       name: 'Cold room',
       deviceTypeId: DEVICE_TYPE_ID,
+      projectId: PROJECT_ID,
       metadata: {},
     });
+  });
+
+  it('requires a project at registration and narrows listings and counters to one', async () => {
+    expectProblem(
+      await api()
+        .post('/v1/devices')
+        .send({ externalId: 'sensor-001', name: 'Cold room', deviceTypeId: DEVICE_TYPE_ID }),
+      400,
+      'VALIDATION_FAILED',
+    );
+    devices.listDevices.mockResolvedValue({ devices: [], nextCursor: null });
+    await api().get(`/v1/devices?projectId=${PROJECT_ID}`).expect(200);
+    expect(devices.listDevices).toHaveBeenCalledWith(expect.anything(), { limit: 25, projectId: PROJECT_ID });
+    devices.deviceStats.mockResolvedValue({ total: 1 });
+    await api().get(`/v1/devices/stats?projectId=${PROJECT_ID}`).expect(200);
+    expect(devices.deviceStats).toHaveBeenCalledWith(expect.anything(), { projectId: PROJECT_ID });
+    expectProblem(await api().get('/v1/devices/stats?projectId=nope'), 400, 'VALIDATION_FAILED');
   });
 
   it('validates the external id and rejects unknown fields', async () => {
@@ -94,7 +113,13 @@ describe('/v1/devices', () => {
     expectProblem(
       await api()
         .post('/v1/devices')
-        .send({ externalId: 'sensor-001', name: 'x', deviceTypeId: DEVICE_TYPE_ID, secret: 'nope' }),
+        .send({
+          externalId: 'sensor-001',
+          name: 'x',
+          deviceTypeId: DEVICE_TYPE_ID,
+          projectId: PROJECT_ID,
+          secret: 'nope',
+        }),
       400,
       'VALIDATION_FAILED',
     );
@@ -102,10 +127,12 @@ describe('/v1/devices', () => {
 
   it('surfaces ownership and duplicate failures', async () => {
     devices.getDevice.mockRejectedValue(DomainErrors.notOwner());
-    expectProblem(await api().get(`/v1/devices/${DEVICE_ID}`), 403, 'NOT_DEVICE_OWNER');
+    expectProblem(await api().get(`/v1/devices/${DEVICE_ID}`), 403, 'NOT_RESOURCE_OWNER');
     devices.registerDevice.mockRejectedValue(DomainErrors.duplicateExternalId());
     expectProblem(
-      await api().post('/v1/devices').send({ externalId: 'sensor-001', name: 'x', deviceTypeId: DEVICE_TYPE_ID }),
+      await api()
+        .post('/v1/devices')
+        .send({ externalId: 'sensor-001', name: 'x', deviceTypeId: DEVICE_TYPE_ID, projectId: PROJECT_ID }),
       409,
       'DUPLICATE_EXTERNAL_ID',
     );
@@ -128,6 +155,14 @@ describe('/v1/devices', () => {
   it('restricts device type creation to admins and scoped clients', async () => {
     devices.listDeviceTypes.mockResolvedValue([]);
     expect((await api().get('/v1/devices/types')).status).toBe(200);
+    expectProblem(
+      await api()
+        .post('/v1/devices/types')
+        .send({ key: 'x', name: 'X', metrics: [{ key: 'a' }] }),
+      403,
+      'INSUFFICIENT_PERMISSIONS',
+    );
+    asClient(['devices:write']);
     expectProblem(
       await api()
         .post('/v1/devices/types')
@@ -196,8 +231,10 @@ describe('/alerts and /rules', () => {
   });
 
   it('restricts rule management and invalidates the cache on write', async () => {
-    expectProblem(await api().get('/v1/rules'), 403, 'INSUFFICIENT_SCOPE');
+    expectProblem(await api().get('/v1/rules'), 403, 'INSUFFICIENT_PERMISSIONS');
     asClient(['devices:write']);
+    expectProblem(await api().get('/v1/rules'), 403, 'INSUFFICIENT_SCOPE');
+    asClient(['rules:manage']);
     rules.listAll.mockResolvedValue([]);
     expect((await api().get('/v1/rules')).status).toBe(200);
 

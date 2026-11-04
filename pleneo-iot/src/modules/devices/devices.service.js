@@ -4,7 +4,7 @@ import { claimCode, deviceToken, keyedHash } from '#common/security/crypto.js';
 import { withTransaction } from '#infra/database/pool.js';
 import * as outbox from '#infra/messaging/outbox.repository.js';
 import { publishDesired } from '#infra/mqtt/bus.js';
-import { actorOf, canWriteAll, loadAccessible, ownerScope } from './access.js';
+import { actorOf, loadAccessible, ownerScope, resolveOwnerId } from './access.js';
 import * as credentials from './credential.repository.js';
 import * as deviceTypes from './device-type.repository.js';
 import * as devices from './device.repository.js';
@@ -16,6 +16,7 @@ const summary = (device) => ({
   deviceId: device.id,
   externalId: device.external_id,
   deviceName: device.name,
+  projectId: device.project_id ?? null,
   ownerId: device.owner_id,
   ownerEmail: device.owner_email,
   deviceType: device.device_type_key,
@@ -26,7 +27,7 @@ export const listDevices = async (auth, filters) => {
   return { devices: rows, nextCursor: rows.length === filters.limit ? rows.at(-1).id : null };
 };
 
-export const deviceStats = (auth) => devices.stats(ownerScope(auth));
+export const deviceStats = (auth, { projectId } = {}) => devices.stats({ ownerId: ownerScope(auth), projectId });
 
 export async function getDevice(auth, id) {
   const device = await loadAccessible(id, auth);
@@ -36,8 +37,7 @@ export async function getDevice(auth, id) {
 export async function registerDevice(auth, input) {
   const type = await deviceTypes.findById(input.deviceTypeId);
   if (!type) throw DomainErrors.invalidReference();
-  if (auth.type !== 'user' && !input.ownerId) throw DomainErrors.notOwner();
-  const ownerId = input.ownerId && canWriteAll(auth) ? input.ownerId : auth.userId;
+  const ownerId = resolveOwnerId(auth, input.ownerId);
 
   const code = claimCode();
   const actorId = actorOf(auth);

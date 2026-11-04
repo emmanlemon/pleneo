@@ -13,6 +13,7 @@ ENV NEXT_PUBLIC_BFF_URL=$NEXT_PUBLIC_BFF_URL \
 COPY --from=deps /repo/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY frontend ./frontend
+COPY --from=deps /repo/frontend/node_modules ./frontend/node_modules
 RUN npm run build --workspace frontend
 
 FROM node:22-alpine

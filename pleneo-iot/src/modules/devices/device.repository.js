@@ -1,6 +1,6 @@
 import { query } from '#infra/database/pool.js';
 
-const COLUMNS = `d.id, d.external_id, d.name, d.device_type_id, d.owner_id, d.owner_email, d.status, d.connection_status,
+const COLUMNS = `d.id, d.external_id, d.name, d.device_type_id, d.project_id, d.owner_id, d.owner_email, d.status, d.connection_status,
   d.firmware, d.site, d.metadata, d.last_seen_at, d.activated_at, d.created_by, d.updated_by, d.created_at, d.updated_at`;
 const WITH_TYPE = `${COLUMNS}, t.key AS device_type_key, t.name AS device_type_name, t.metrics AS device_type_metrics`;
 const JOIN = `FROM devices d JOIN device_types t ON t.id = d.device_type_id`;
@@ -12,10 +12,11 @@ export const findByClaimCodeHash = async (hash, client = { query }) =>
   (await client.query(`SELECT ${WITH_TYPE} ${JOIN} WHERE d.claim_code_hash = $1 AND d.deleted_at IS NULL`, [hash]))
     .rows[0] ?? null;
 
-export async function list({ ownerId, status, connectionStatus, deviceTypeId, search, cursor, limit }) {
+export async function list({ ownerId, projectId, status, connectionStatus, deviceTypeId, search, cursor, limit }) {
   const params = [limit];
   const conditions = ['d.deleted_at IS NULL'];
   if (ownerId) conditions.push(`d.owner_id = $${params.push(ownerId)}`);
+  if (projectId) conditions.push(`d.project_id = $${params.push(projectId)}`);
   if (status) conditions.push(`d.status = $${params.push(status)}`);
   if (connectionStatus) conditions.push(`d.connection_status = $${params.push(connectionStatus)}`);
   if (deviceTypeId) conditions.push(`d.device_type_id = $${params.push(deviceTypeId)}`);
@@ -26,27 +27,48 @@ export async function list({ ownerId, status, connectionStatus, deviceTypeId, se
 }
 
 export const create = async (
-  { externalId, name, deviceTypeId, ownerId, ownerEmail, site, metadata, claimCodeHash, actorId },
+  { externalId, name, deviceTypeId, projectId, ownerId, ownerEmail, site, metadata, claimCodeHash, actorId },
   client = { query },
 ) =>
   (
     await client.query(
-      `INSERT INTO devices (external_id, name, device_type_id, owner_id, owner_email, site, metadata, claim_code_hash, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9) RETURNING id`,
-      [externalId, name, deviceTypeId, ownerId, ownerEmail ?? null, site ?? null, metadata, claimCodeHash, actorId],
+      `INSERT INTO devices (external_id, name, device_type_id, project_id, owner_id, owner_email, site, metadata, claim_code_hash, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10) RETURNING id`,
+      [
+        externalId,
+        name,
+        deviceTypeId,
+        projectId,
+        ownerId,
+        ownerEmail ?? null,
+        site ?? null,
+        metadata,
+        claimCodeHash,
+        actorId,
+      ],
     )
   ).rows[0];
 
-export const update = async (id, { name, site, metadata, status, firmware, actorId }, client = { query }) =>
+export const update = async (id, { name, site, metadata, status, firmware, projectId, actorId }, client = { query }) =>
   (
     await client.query(
       `UPDATE devices
           SET name = COALESCE($2, name), site = COALESCE($3, site), metadata = COALESCE($4, metadata),
-              status = COALESCE($5, status), firmware = COALESCE($6, firmware), updated_by = $7
+              status = COALESCE($5, status), firmware = COALESCE($6, firmware), project_id = COALESCE($7, project_id),
+              updated_by = $8
         WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
-      [id, name ?? null, site ?? null, metadata ?? null, status ?? null, firmware ?? null, actorId],
+      [id, name ?? null, site ?? null, metadata ?? null, status ?? null, firmware ?? null, projectId ?? null, actorId],
     )
   ).rows[0] ?? null;
+
+export const releaseProject = async (projectId, client = { query }) =>
+  (
+    await client.query(
+      `UPDATE devices SET project_id = NULL, updated_by = 'system:project-deleted'
+        WHERE project_id = $1 AND deleted_at IS NULL RETURNING id`,
+      [projectId],
+    )
+  ).rows;
 
 export const activate = async (id, { firmware }, client = { query }) =>
   (
@@ -105,9 +127,12 @@ export const claimStale = async (client, offlineAfterSeconds, limit = 200) =>
     )
   ).rows;
 
-export const stats = async (ownerId) => {
-  const params = ownerId ? [ownerId] : [];
-  const scope = ownerId ? 'AND owner_id = $1' : '';
+export const stats = async ({ ownerId, projectId } = {}) => {
+  const params = [];
+  const conditions = [];
+  if (ownerId) conditions.push(`owner_id = $${params.push(ownerId)}`);
+  if (projectId) conditions.push(`project_id = $${params.push(projectId)}`);
+  const scope = conditions.map((c) => `AND ${c}`).join(' ');
   const { rows } = await query(
     `SELECT count(*)::int AS total,
             count(*) FILTER (WHERE connection_status = 'online')::int AS online,

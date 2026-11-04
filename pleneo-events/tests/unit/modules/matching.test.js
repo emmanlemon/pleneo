@@ -50,6 +50,10 @@ describe('email templates', () => {
     expect(email.text).toContain('http://localhost:3000/verify-email?token=tok-123');
     expect(email.html).toContain('href="http://localhost:3000/verify-email?token=tok-123"');
     expect(templateNames()).toContain('auth.reset-password');
+
+    const invite = renderTemplate('auth.invite', { inviteToken: 'inv-1', name: 'Ada', invitedBy: 'ops@example.com' });
+    expect(invite.text).toContain('ops@example.com invited you');
+    expect(invite.html).toContain('href="http://localhost:3000/accept-invite?token=inv-1"');
   });
 
   it('rejects unknown templates as non-retryable', () => {

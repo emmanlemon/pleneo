@@ -16,12 +16,14 @@ vi.mock('#modules/auth/services/login.service.js');
 vi.mock('#modules/auth/services/registration.service.js');
 vi.mock('#modules/auth/services/password.service.js');
 vi.mock('#modules/auth/services/session.service.js');
+vi.mock('#modules/users/invitation.service.js');
 
 const { api, cookieNamed, expectProblem } = await import('../../helpers/app.js');
 const loginService = await import('#modules/auth/services/login.service.js');
 const registrationService = await import('#modules/auth/services/registration.service.js');
 const passwordService = await import('#modules/auth/services/password.service.js');
 const sessionService = await import('#modules/auth/services/session.service.js');
+const invitationService = await import('#modules/users/invitation.service.js');
 const { DomainErrors } = await import('#common/errors/domain-errors.js');
 
 const tokens = {
@@ -35,6 +37,38 @@ const tokens = {
 const strongPassword = 'Correct-Horse-Battery-9';
 
 beforeEach(() => anonymous());
+
+describe('POST /auth/invitations/accept', () => {
+  it('activates the account and enforces the password policy', async () => {
+    invitationService.accept.mockResolvedValue();
+    const res = await api()
+      .post('/v1/auth/invitations/accept')
+      .send({ token: 't'.repeat(32), password: strongPassword });
+    expect(res.status).toBe(200);
+    expect(invitationService.accept).toHaveBeenCalledWith(
+      { token: 't'.repeat(32), password: strongPassword },
+      expect.objectContaining({ requestId: expect.any(String) }),
+    );
+    expectProblem(
+      await api()
+        .post('/v1/auth/invitations/accept')
+        .send({ token: 't'.repeat(32), password: 'weak' }),
+      400,
+      'VALIDATION_FAILED',
+    );
+  });
+
+  it('maps a spent token to 401', async () => {
+    invitationService.accept.mockRejectedValue(DomainErrors.invalidToken('Invalid or expired invitation'));
+    expectProblem(
+      await api()
+        .post('/v1/auth/invitations/accept')
+        .send({ token: 't'.repeat(32), password: strongPassword }),
+      401,
+      'INVALID_TOKEN',
+    );
+  });
+});
 
 describe('POST /auth/register', () => {
   it('normalises the email and responds 202 without revealing existence', async () => {
@@ -115,7 +149,9 @@ describe('POST /auth/login/mfa', () => {
   });
 
   it('rejects a malformed code', async () => {
-    const res = await api().post('/v1/auth/login/mfa').send({ mfaToken: 'aaaaaaaaaa.bbbbbbbbbb.cccccccccc', code: '12' });
+    const res = await api()
+      .post('/v1/auth/login/mfa')
+      .send({ mfaToken: 'aaaaaaaaaa.bbbbbbbbbb.cccccccccc', code: '12' });
     expectProblem(res, 400, 'VALIDATION_FAILED');
   });
 });

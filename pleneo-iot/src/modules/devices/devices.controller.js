@@ -2,7 +2,7 @@ import { created, noContent, ok } from '#common/http/respond.js';
 import * as service from './devices.service.js';
 
 export const list = async (req, res) => ok(res, await service.listDevices(req.auth, req.query));
-export const stats = async (req, res) => ok(res, await service.deviceStats(req.auth));
+export const stats = async (req, res) => ok(res, await service.deviceStats(req.auth, req.query));
 export const get = async (req, res) => ok(res, await service.getDevice(req.auth, req.params.id));
 export const register = async (req, res) => created(res, await service.registerDevice(req.auth, req.body));
 export const update = async (req, res) => ok(res, await service.updateDevice(req.auth, req.params.id, req.body));

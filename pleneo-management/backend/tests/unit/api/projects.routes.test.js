@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { anonymous, asUser, PROJECT_ID, USER_ID } from '../../helpers/principal.js';
+import { anonymous, asClient, asUser, PROJECT_ID, USER_ID } from '../../helpers/principal.js';
 
 vi.mock('#common/middleware/authenticate.js', async () => {
   const { principal } = await import('../../helpers/principal.js');
@@ -54,6 +54,17 @@ describe('/v1/projects', () => {
     const res = await api().get('/v1/projects');
     expectProblem(res, 401, 'AUTHENTICATION_REQUIRED');
     expect(res.headers['www-authenticate']).toBe('Bearer');
+  });
+
+  it('refuses a client without the read scope on every listing surface', async () => {
+    asClient(['events:publish']);
+    expectProblem(await api().get('/v1/projects'), 403, 'INSUFFICIENT_SCOPE');
+    expectProblem(await api().get('/v1/projects/summary'), 403, 'INSUFFICIENT_SCOPE');
+    expect(repository.list).not.toHaveBeenCalled();
+    expect(repository.summarize).not.toHaveBeenCalled();
+    asClient(['projects:read']);
+    expect((await api().get('/v1/projects')).status).toBe(200);
+    expect(repository.list).toHaveBeenCalledWith(expect.objectContaining({ ownerId: null }));
   });
 
   it('lists with validated pagination and filters', async () => {

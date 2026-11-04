@@ -49,7 +49,15 @@ export function createApp() {
   app.use(globalLimiter);
   app.use(noCache);
   app.use(enforceJsonContentType);
-  app.use(express.json({ limit: '512kb', strict: true }));
+  app.use(
+    express.json({
+      limit: '512kb',
+      strict: true,
+      verify: (req, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
 
   app.use(router);
   app.use(notFoundHandler);

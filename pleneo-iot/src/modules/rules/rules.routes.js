@@ -4,7 +4,7 @@ import * as r from '#common/validation/rules.js';
 import { DomainErrors } from '#common/errors/domain-errors.js';
 import { asyncHandler as h } from '#common/http/async-handler.js';
 import { created, noContent, ok } from '#common/http/respond.js';
-import { requireAny, requireRole, requireScope } from '#common/middleware/authorize.js';
+import { requirePermission } from '#common/middleware/authorize.js';
 import { writeLimiter } from '#common/middleware/rate-limit.js';
 import { body, params, query, validate } from '#common/validation/validator.js';
 import { actorOf } from '#modules/devices/access.js';
@@ -56,7 +56,7 @@ const validateList = query(
 );
 
 export const rulesRouter = Router();
-rulesRouter.use(requireAny(requireRole('admin'), requireScope('devices:write')));
+rulesRouter.use(requirePermission('rules:manage'));
 
 rulesRouter.get(
   '/',

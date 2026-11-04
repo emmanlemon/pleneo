@@ -27,6 +27,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { connectionVariant } from './device-list';
+import { DeviceProject } from './device-project';
 import { SimulationControl } from './simulation-control';
 import { TelemetryChart } from './telemetry-chart';
 
@@ -61,6 +62,9 @@ export function DeviceDetail({ id }: { id: string }) {
             {device.data.external_id} · {device.data.device_type_name}
             {device.data.site ? ` · ${device.data.site}` : ''}
           </p>
+          <div className="mt-2">
+            <DeviceProject device={device.data} />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={connectionVariant(device.data.connection_status)}>{device.data.connection_status}</Badge>

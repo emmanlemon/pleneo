@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler as h } from '#common/http/async-handler.js';
 import { ok } from '#common/http/respond.js';
 import { authenticate } from '#common/middleware/authenticate.js';
-import { requireAny, requireRole, requireScope } from '#common/middleware/authorize.js';
+import { requirePermission } from '#common/middleware/authorize.js';
 import { adminWriteLimiter } from '#common/middleware/rate-limit.js';
 import { getEmailProvider } from '#infra/email/provider.js';
 import { handlerTypes } from '#queue/handlers/index.js';
@@ -15,7 +15,7 @@ import { subscriptionsRouter } from '#modules/subscriptions/subscriptions.routes
 import { overview } from './stats.repository.js';
 
 export const adminRouter = Router();
-adminRouter.use(authenticate, requireAny(requireRole('admin'), requireScope('events:manage')));
+adminRouter.use(authenticate, requirePermission('queues:manage'));
 adminRouter.use((req, res, next) => (req.method === 'GET' ? next() : adminWriteLimiter(req, res, next)));
 
 adminRouter.get(

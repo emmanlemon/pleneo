@@ -11,14 +11,24 @@ export const findById = async (id, client = { query }) =>
 export const findPublicById = async (id) =>
   (await query(`SELECT ${PUBLIC_COLUMNS} FROM users WHERE id = $1`, [id])).rows[0] ?? null;
 
-export const create = async ({ email, passwordHash, name }, client = { query }) =>
+export const create = async ({ email, passwordHash, name, status = 'active' }, client = { query }) =>
   (
-    await client.query(`INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING *`, [
+    await client.query(`INSERT INTO users (email, password_hash, name, status) VALUES ($1, $2, $3, $4) RETURNING *`, [
       email,
       passwordHash,
       name ?? null,
+      status,
     ])
   ).rows[0];
+
+export const activateInvited = async (userId, passwordHash, client) =>
+  (
+    await client.query(
+      `UPDATE users SET password_hash = $2, status = 'active', email_verified = TRUE, password_changed_at = now()
+        WHERE id = $1 AND status = 'invited' RETURNING id`,
+      [userId, passwordHash],
+    )
+  ).rows[0] ?? null;
 
 export const updateProfile = async (userId, { name }) =>
   (

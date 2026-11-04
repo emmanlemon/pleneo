@@ -18,6 +18,7 @@ export type Device = {
   device_type_key: string;
   device_type_name: string;
   device_type_metrics: MetricDefinition[];
+  project_id: string | null;
   owner_id: string;
   status: DeviceStatus;
   connection_status: ConnectionStatus;
@@ -91,12 +92,21 @@ export type Rule = {
 export type DeviceListParams = {
   limit?: number;
   cursor?: string;
+  projectId?: string;
   status?: DeviceStatus;
   connectionStatus?: ConnectionStatus;
   search?: string;
 };
 
-export type RegisterDeviceInput = { externalId: string; name: string; deviceTypeId: string; site?: string };
+export type DeviceStatsParams = { projectId?: string };
+export type RegisterDeviceInput = {
+  externalId: string;
+  name: string;
+  deviceTypeId: string;
+  projectId: string;
+  site?: string;
+};
+export type UpdateDeviceInput = Partial<Pick<Device, 'name' | 'site' | 'status'>> & { projectId?: string };
 
 export type Simulation = {
   running: boolean;
@@ -114,11 +124,10 @@ export type StartSimulationInput = { intervalMs?: number; spike?: boolean };
 export const devicesApi = {
   list: (params: DeviceListParams = {}) =>
     bffHttp.get<{ devices: Device[]; nextCursor: string | null }>('/devices', { params }).then((r) => r.data),
-  stats: () => bffHttp.get<DeviceStats>('/devices/stats').then((r) => r.data),
+  stats: (params: DeviceStatsParams = {}) => bffHttp.get<DeviceStats>('/devices/stats', { params }).then((r) => r.data),
   get: (id: string) => bffHttp.get<DeviceDetail>(`/devices/${id}`).then((r) => r.data),
   register: (input: RegisterDeviceInput) => bffHttp.post<RegisteredDevice>('/devices', input).then((r) => r.data),
-  update: (id: string, input: Partial<Pick<Device, 'name' | 'site' | 'status'>>) =>
-    bffHttp.patch<Device>(`/devices/${id}`, input).then((r) => r.data),
+  update: (id: string, input: UpdateDeviceInput) => bffHttp.patch<Device>(`/devices/${id}`, input).then((r) => r.data),
   remove: (id: string) => bffHttp.delete(`/devices/${id}`).then(() => undefined),
   rotateCredential: (id: string) =>
     bffHttp.post<{ id: string; token: string }>(`/devices/${id}/credentials`, {}).then((r) => r.data),

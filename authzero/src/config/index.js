@@ -33,6 +33,7 @@ const schema = z.object({
   REQUIRE_EMAIL_VERIFICATION: bool('true'),
   EMAIL_TOKEN_TTL_MINUTES: z.coerce.number().int().positive().default(60),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(30),
+  INVITE_TTL_MINUTES: z.coerce.number().int().positive().default(4320),
   MAX_FAILED_LOGINS: z.coerce.number().int().min(1).default(5),
   LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
   PASSWORD_HISTORY_SIZE: z.coerce.number().int().min(0).default(5),

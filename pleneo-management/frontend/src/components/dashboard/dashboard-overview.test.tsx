@@ -21,20 +21,20 @@ const { DashboardOverview } = await import('./dashboard-overview');
 const { daysUntil } = await import('./portfolio-card');
 const { throughputBuckets } = await import('./queue-health-card');
 
-const session = (roles: string[]): Session => ({
+const session = (permissions: string[]): Session => ({
   id: 'u1',
   email: 'ops@example.com',
   email_verified: true,
   name: 'Dana Cruz',
   mfa_enabled: false,
-  roles,
-  permissions: [],
+  roles: ['user'],
+  permissions,
 });
 
 const isoDay = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
 
 beforeEach(() => {
-  vi.mocked(authApi.session).mockResolvedValue(session(['user']));
+  vi.mocked(authApi.session).mockResolvedValue(session([]));
   vi.mocked(devicesApi.stats).mockResolvedValue({ total: 8, online: 6, offline: 1, provisioning: 1, disabled: 0 });
   vi.mocked(devicesApi.alertStats).mockResolvedValue({ open: 2, critical: 1 });
   vi.mocked(devicesApi.alerts).mockResolvedValue({
@@ -97,11 +97,13 @@ describe('DashboardOverview', () => {
     expect(await screen.findByText('Temperature above 8')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Acknowledge alert on Cold room sensor' })).toBeEnabled();
     expect(await screen.findByText('3d overdue')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /Projects by status: Planning 1 \(20%\), Active 2 \(40%\)/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /Projects by status: Planning 1 \(20%\), Active 2 \(40%\)/ }),
+    ).toBeInTheDocument();
   });
 
   it('shows platform processing to admins only', async () => {
-    vi.mocked(authApi.session).mockResolvedValue(session(['admin', 'user']));
+    vi.mocked(authApi.session).mockResolvedValue(session(['platform:manage', 'queues:manage']));
     vi.mocked(eventsApi.stats).mockResolvedValue({
       queues: {
         default: { pending: 3, running: 1, succeeded: 40, failed: 0, dead: 2, cancelled: 0, oldestPending: null },

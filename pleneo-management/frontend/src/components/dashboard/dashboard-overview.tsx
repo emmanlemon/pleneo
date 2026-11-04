@@ -5,7 +5,7 @@ import { useAlertStats, useDeviceStats } from '@/lib/devices/hooks';
 import { useQueueStats } from '@/lib/events/hooks';
 import { useUnreadCount } from '@/lib/notifications/hooks';
 import { useProjectSummary } from '@/lib/projects/hooks';
-import { isAdmin } from '../admin/admin-guard';
+import { isPlatformOperator } from '../admin/admin-guard';
 import { ActivityCard } from './activity-card';
 import { FleetHealthCard } from './fleet-health-card';
 import { OpenAlertsCard } from './open-alerts-card';
@@ -91,7 +91,7 @@ function InboxTile() {
 
 export function DashboardOverview() {
   const { data: session } = useSession();
-  const admin = isAdmin(session?.roles);
+  const admin = isPlatformOperator(session);
   const name = session?.name?.split(' ')[0] ?? session?.email;
 
   return (

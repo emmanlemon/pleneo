@@ -4,15 +4,18 @@ import { isOwnedBy } from './project.js';
 export const READ_ALL_SCOPE = 'projects:read';
 export const WRITE_ALL_SCOPE = 'projects:write';
 
-const isAdmin = (auth) => auth.type === 'user' && auth.roles.includes('admin');
-const hasScope = (auth, scope) => auth.type === 'client' && auth.scopes.includes(scope);
+const hasPermission = (auth, permission) => auth?.permissions?.includes(permission) ?? false;
 
-export const canReadAll = (auth) => isAdmin(auth) || hasScope(auth, READ_ALL_SCOPE);
-export const canWriteAll = (auth) => isAdmin(auth) || hasScope(auth, WRITE_ALL_SCOPE);
+export const canReadAll = (auth) => hasPermission(auth, READ_ALL_SCOPE);
+export const canWriteAll = (auth) => hasPermission(auth, WRITE_ALL_SCOPE);
 
 export const actorOf = (auth) => (auth.type === 'user' ? auth.userId : auth.clientId);
 
-export const visibleOwnerId = (auth) => (canReadAll(auth) ? null : auth.userId);
+export function visibleOwnerId(auth) {
+  if (canReadAll(auth)) return null;
+  if (auth?.type !== 'user') throw DomainErrors.insufficientScope();
+  return auth.userId;
+}
 
 export function assertCanAccess(project, auth, { write }) {
   const privileged = write ? canWriteAll(auth) : canReadAll(auth);
